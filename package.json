@@ -1,0 +1,22 @@
+{
+  "name": "academy-alef-rank-bot",
+  "version": "1.0.0",
+  "private": false,
+  "type": "module",
+  "description": "Telegram rank estimation bot for Academy Alef on Vercel",
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check api/webhook.js && node --check src/bot.js && node --check src/calculations.js",
+    "webhook:set": "node scripts/register-webhook.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.2"
+  }
+}

@@ -1,0 +1,87 @@
+# ربات تخمین رتبه آکادمی الف
+
+ربات تلگرام آکادمی الف برای تخمین رتبه کنکور، تراز معدل نهایی، ترکیب درصد و معدل، و تحلیل تراز آزمون‌های آزمایشی است. این نسخه با JavaScript روی Vercel Functions اجرا می‌شود، از webhook تلگرام استفاده می‌کند و وضعیت کاربران را در PostgreSQL نگه می‌دارد.
+
+## قابلیت‌ها
+
+- تخمین رتبه رشته‌های تجربی و ریاضی بر اساس تراز و منطقه
+- تخمین بازه تراز از معدل کل یا نمره‌های ضریب‌دار
+- تخمین رتبه از ترکیب ۶۰٪ معدل و ۴۰٪ درصدهای کنکور
+- تحلیل تراز آزمون‌های ماز و قلمچی
+- دریافت یک‌باره شماره کاربر پیش از نمایش نتیجه
+- نگهداری دائمی state و تأیید شماره در PostgreSQL
+- اجرای serverless با webhook و بدون worker همیشه‌روشن
+- ارسال تصاویر و محتوای ثابت آکادمی
+
+## معماری
+
+تلگرام درخواست‌ها را به `api/webhook.js` می‌فرستد. درخواست با secret اختصاصی اعتبارسنجی می‌شود، update تکراری کنار گذاشته می‌شود، state کاربر از PostgreSQL خوانده می‌شود و بعد از پاسخ ذخیره می‌گردد. endpoint ریشه و `api/health.js` برای health check در دسترس‌اند.
+
+## اجرای محلی
+
+Node.js نسخه 20 یا جدیدتر و یک دیتابیس PostgreSQL لازم است.
+
+```bash
+npm install
+cp .env.example .env
+npm test
+npm run check
+```
+
+مقادیر `.env` را کامل کنید. برای دریافت update واقعی در محیط محلی باید یک URL عمومی HTTPS در اختیار تلگرام قرار گیرد.
+
+## متغیرهای محیطی
+
+| نام | کاربرد |
+| --- | --- |
+| `BOT_TOKEN` | توکن ربات از BotFather |
+| `DATABASE_URL` | رشته اتصال PostgreSQL سازگار با Neon |
+| `TELEGRAM_WEBHOOK_SECRET` | secret تصادفی برای اعتبارسنجی درخواست‌های تلگرام |
+| `CONTACT_ADMIN_CHAT_IDS` | شناسه مدیران با جداکننده ویرگول |
+| `PUBLIC_BASE_URL` | آدرس production پروژه Vercel بدون اسلش انتهایی |
+
+فایل `.env` در Git نادیده گرفته می‌شود و نباید commit شود.
+
+## استقرار روی Vercel
+
+1. ریپو را به یک پروژه Vercel متصل کنید.
+2. از Marketplace یک دیتابیس Neon PostgreSQL بسازید و آن را به پروژه متصل کنید.
+3. متغیرهای محیطی جدول بالا را برای Production تنظیم کنید.
+4. پروژه را deploy کنید.
+5. آدرس production را در `PUBLIC_BASE_URL` قرار دهید و دوباره deploy کنید.
+6. webhook و commandهای ربات را ثبت کنید:
+
+```bash
+npm run webhook:set
+```
+
+جدول‌های `bot_users` و `telegram_updates` در اولین درخواست به‌صورت خودکار ساخته می‌شوند.
+
+## بررسی استقرار
+
+```bash
+curl https://YOUR_PROJECT.vercel.app/api/health
+```
+
+پاسخ سالم:
+
+```json
+{"status":"ok","service":"academy-alef-rank-bot"}
+```
+
+## ساختار پروژه
+
+```text
+api/                 Vercel Functions
+assets/              تصاویر ثابت
+scripts/             ابزار ثبت webhook
+src/bot.js           جریان مکالمه و Telegram API
+src/calculations.js  داده‌ها و منطق محاسبات
+src/content.js       متن‌های ثابت فارسی
+src/database.js      persistence در PostgreSQL
+test/                تست‌های منطق محاسبات
+```
+
+## مجوز
+
+MIT
