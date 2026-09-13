@@ -31,6 +31,7 @@ const commands = await fetch(`${api}/setMyCommands`, {
   body: JSON.stringify({
     commands: [
       { command: "start", description: "شروع ربات و منوی اصلی" },
+      { command: "moshavere", description: "درخواست مشاوره رایگان" },
       { command: "cancel", description: "لغو عملیات" }
     ]
   })

@@ -1,7 +1,7 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { Input, Telegraf } from "telegraf"
-import { claimUpdate, loadUser, releaseUpdate, saveUser } from "./database.js"
+import { claimUpdate, listConsultations, loadUser, releaseUpdate, saveConsultation, saveUser } from "./database.js"
 import {
   GPA_COEF,
   PCT_SUBJECTS,
@@ -48,6 +48,17 @@ const contactKeyboard = {
   }
 }
 const removeKeyboard = { reply_markup: { remove_keyboard: true } }
+const consultationValueText = `✅ *نتیجه تخمینی شما آماده است.*
+
+برای دریافت موارد زیر، می‌توانید از مشاوره رایگان استفاده کنید:
+
+• رتبه دقیق‌تر با در نظر گرفتن سال‌های اخیر
+• شانس قبولی در ۳ رشته مورد علاقه‌تان
+• پیشنهاد اولیه انتخاب رشته
+• مشاوره رایگان ۵ دقیقه‌ای
+• شبیه‌سازی طرح انتخاب رشته (نسخه کامل پولی)
+
+برای شروع مشاوره رایگان، دستور /moshavere را ارسال کنید.`
 const regionMap = { "🥇 منطقه ۱": "1", "🥈 منطقه ۲": "2", "🥉 منطقه ۳": "3", "منطقه ۱": "1", "منطقه ۲": "2", "منطقه ۳": "3" }
 let bot
 
@@ -72,7 +83,11 @@ function numberFrom(text) {
 }
 
 function clearCalculation(data) {
-  return Object.fromEntries(["contact_verified", "phone_number", "contact_name"].filter(key => key in data).map(key => [key, data[key]]))
+  return Object.fromEntries(["contact_verified", "phone_number", "contact_name", "last_estimate"].filter(key => key in data).map(key => [key, data[key]]))
+}
+
+function rememberEstimate(session, details, result) {
+  session.data.last_estimate = { ...details, result, created_at: new Date().toISOString() }
 }
 
 async function typing(chatId) {
@@ -115,6 +130,7 @@ async function showResult(chatId, session, result) {
   if (session.data.contact_verified) {
     await typing(chatId)
     await markdown(chatId, result, mainKeyboard)
+    await markdown(chatId, consultationValueText, mainKeyboard)
     session.data = clearCalculation(session.data)
     session.state = "MAIN_MENU"
     return
@@ -216,7 +232,9 @@ async function rankScore(message, session, text) {
   if (score === null || score < 0 || score > 11000) return reply(message.chat.id, "⚠️ تراز معتبر وارد کن (از زیر ۵۰۰۰ تا حداکثر ۱۱۰۰۰).")
   await typing(message.chat.id)
   const loading = await reply(message.chat.id, "⏳ در حال محاسبه...")
-  const result = formatRankResult(session.data.field, session.data.region, score, findRank(session.data.field, session.data.region, score))
+  const rank = findRank(session.data.field, session.data.region, score)
+  const result = formatRankResult(session.data.field, session.data.region, score, rank)
+  rememberEstimate(session, { type: "تخمین رتبه با تراز کل", field: session.data.field, region: session.data.region, taraz: score, rank }, result)
   await telegram().editMessageText(message.chat.id, loading.message_id, undefined, "✅ محاسبه با موفقیت انجام شد.")
   await showResult(message.chat.id, session, result)
 }
@@ -262,7 +280,9 @@ async function gpaTotal(message, session, text) {
   if (gpa === null || gpa < 10 || gpa > 20) return reply(message.chat.id, "⚠️ معدل معتبر وارد کن (۱۰ تا ۲۰).")
   const range = gpaToTarazRange(gpa, session.data.field)
   if (!range) return reply(message.chat.id, "⚠️ داده تخمین برای معدل‌های ۱۰ تا ۲۰ تعریف شده است.")
-  await showResult(message.chat.id, session, gpaResult(session.data.field, gpa, range))
+  const result = gpaResult(session.data.field, gpa, range)
+  rememberEstimate(session, { type: "تخمین تراز معدل کل", field: session.data.field, gpa, taraz_range: range }, result)
+  await showResult(message.chat.id, session, result)
 }
 
 async function gpaSingle(message, session, text) {
@@ -283,7 +303,9 @@ async function gpaSingle(message, session, text) {
     session.state = "MAIN_MENU"
     return
   }
-  await showResult(message.chat.id, session, gpaResult(session.data.field, weighted, range, true))
+  const result = gpaResult(session.data.field, weighted, range, true)
+  rememberEstimate(session, { type: "تخمین تراز معدل وزنی", field: session.data.field, gpa: weighted, taraz_range: range }, result)
+  await showResult(message.chat.id, session, result)
 }
 
 async function pctField(message, session, text) {
@@ -331,6 +353,7 @@ async function pctInput(message, session, text) {
   const rank = findRank(session.data.field, session.data.region, finalTaraz)
   const fieldName = session.data.field === "tajrobi" ? "تجربی" : "ریاضی"
   const result = `🎉 *نتیجه تخمین رتبه (درصد + معدل)*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🎓 رشته: *${fieldName}*\n📍 منطقه: *${session.data.region}*\n📊 معدل: *${session.data.gpa}*\n🧪 میانگین وزنی درصدها: *${average.toFixed(1)}%*\n\n━━━━━━━━━━━━━━━━━━━━\n\nتراز معدل: *${gpaTaraz}* (بازه ${gpaRange[0]} تا ${gpaRange[1]})\nتراز درصد: *${percentageTaraz}*\nتراز کل (۶۰٪ معدل + ۴۰٪ درصد): *${finalTaraz}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🏆 تخمین رتبه:\n*${rank || "خارج از بازه"}*\n\n📈 وضعیت: *${rank ? getStatus(rank) : "—"}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n💡 نتیجه فقط از جدول‌های داده‌شده محاسبه شده است.`
+  rememberEstimate(session, { type: "تخمین رتبه با درصد و معدل", field: session.data.field, region: session.data.region, gpa: session.data.gpa, weighted_percent: average, taraz: finalTaraz, rank }, result)
   await showResult(message.chat.id, session, result)
 }
 
@@ -351,7 +374,9 @@ async function examType(message, session, text) {
 async function examTaraz(message, session, text) {
   const taraz = numberFrom(text)
   if (taraz === null) return reply(message.chat.id, "⚠️ لطفاً یک عدد معتبر وارد کن.")
-  await showResult(message.chat.id, session, evaluateExamTaraz(session.data.exam_type, taraz))
+  const result = evaluateExamTaraz(session.data.exam_type, taraz)
+  rememberEstimate(session, { type: "تحلیل تراز آزمون آزمایشی", exam: session.data.exam_type, taraz }, result)
+  await showResult(message.chat.id, session, result)
 }
 
 async function contact(message, session, text) {
@@ -374,11 +399,90 @@ async function contact(message, session, text) {
   if (pending) {
     await reply(message.chat.id, "✅ شماره شما تأیید شد. نتیجه محاسبه:", removeKeyboard)
     await markdown(message.chat.id, pending, mainKeyboard)
+    await markdown(message.chat.id, consultationValueText, mainKeyboard)
   } else {
     await reply(message.chat.id, "✅ شماره شما تأیید شد. از این به بعد دوباره درخواست نمی‌شود.", mainKeyboard)
   }
   session.data = clearCalculation(session.data)
   session.state = "MAIN_MENU"
+}
+
+async function startConsultation(message, session) {
+  session.data = clearCalculation(session.data)
+  if (!session.data.contact_verified || !session.data.phone_number) {
+    await reply(message.chat.id, "برای ثبت درخواست مشاوره رایگان، ابتدا شماره خودت را با دکمه «📱 ارسال شماره من» تأیید کن.", contactKeyboard)
+    session.state = "CONSULT_CONTACT"
+    return
+  }
+  await markdown(message.chat.id, "سه رشته یا مسیر تحصیلی مورد علاقه‌ات را در یک پیام بنویس.\n\nمثال: `پزشکی، دندانپزشکی، داروسازی`", removeKeyboard)
+  session.state = "CONSULT_INTERESTS"
+}
+
+async function consultationContact(message, session, text) {
+  if (text === "🔙 بازگشت به منوی اصلی") {
+    await reply(message.chat.id, "به منوی اصلی بازگشتید.", mainKeyboard)
+    session.state = "MAIN_MENU"
+    return
+  }
+  const value = message.contact
+  if (!value) return reply(message.chat.id, "لطفاً شماره خودت را فقط با دکمه «📱 ارسال شماره من» تأیید کن.", contactKeyboard)
+  if (value.user_id !== message.from.id) return reply(message.chat.id, "⚠️ این شماره متعلق به حساب تلگرام شما نیست. لطفاً شماره خودت را ارسال کن.", contactKeyboard)
+  session.data.phone_number = value.phone_number
+  session.data.contact_name = [value.first_name, value.last_name].filter(Boolean).join(" ")
+  session.data.contact_verified = true
+  await markdown(message.chat.id, "شماره تأیید شد. حالا سه رشته یا مسیر تحصیلی مورد علاقه‌ات را در یک پیام بنویس.\n\nمثال: `پزشکی، دندانپزشکی، داروسازی`", removeKeyboard)
+  session.state = "CONSULT_INTERESTS"
+}
+
+export function estimateAdminText(estimate) {
+  if (!estimate) return "تخمین ثبت‌شده: ندارد"
+  return `نوع تخمین: ${estimate.type || "—"}\nرشته: ${estimate.field || "—"}\nمنطقه: ${estimate.region || "—"}\nتراز: ${estimate.taraz ?? "—"}\nرتبه: ${estimate.rank || "—"}\nنتیجه کامل:\n${estimate.result || "—"}`
+}
+
+async function consultationInterests(message, session, text) {
+  const interests = text.trim()
+  if (!interests || interests.startsWith("/")) return reply(message.chat.id, "لطفاً سه رشته یا مسیر مورد علاقه‌ات را در یک پیام بنویس.")
+  if (interests.length > 500) return reply(message.chat.id, "متن رشته‌های مورد علاقه خیلی طولانی است؛ لطفاً کوتاه‌تر بنویس.")
+  const fullName = session.data.contact_name || [message.from.first_name, message.from.last_name].filter(Boolean).join(" ") || "—"
+  const request = {
+    userId: message.from.id,
+    fullName,
+    username: message.from.username || null,
+    phoneNumber: session.data.phone_number,
+    interests,
+    estimate: session.data.last_estimate || null
+  }
+  await saveConsultation(request)
+  const adminText = `🆕 درخواست مشاوره رایگان\n\nنام: ${fullName}\nشماره: ${request.phoneNumber}\nنام کاربری: ${request.username ? `@${request.username}` : "—"}\nشناسه تلگرام: ${request.userId}\nرشته‌های مورد علاقه: ${interests}\n\n${estimateAdminText(request.estimate)}`
+  await notifyAdmins(adminText, { phone_number: request.phoneNumber, first_name: fullName })
+  await reply(message.chat.id, "✅ درخواست مشاوره رایگان شما ثبت شد. تیم مشاوره برای هماهنگی با شما تماس می‌گیرد.", mainKeyboard)
+  session.data = clearCalculation(session.data)
+  session.state = "MAIN_MENU"
+}
+
+export function consultationListMessages(rows) {
+  if (!rows.length) return ["📋 هنوز هیچ درخواست مشاوره‌ای ثبت نشده است.\n\nتعداد کل: ۰"]
+  const entries = rows.map((row, index) => {
+    const estimate = row.estimate || null
+    const requestedAt = new Date(row.requested_at).toLocaleString("fa-IR", { timeZone: "Asia/Tehran" })
+    return `${index + 1}) ${row.full_name}\nشماره: ${row.phone_number}\nنام کاربری: ${row.username ? `@${row.username}` : "—"}\nشناسه: ${row.user_id}\nعلاقه‌مندی‌ها: ${row.interests}\nزمان درخواست: ${requestedAt}\n${estimateAdminText(estimate)}`
+  })
+  const messages = []
+  let current = `📋 درخواست‌های مشاوره\n\nتعداد کل: ${rows.length}`
+  for (const entry of entries) {
+    if (`${current}\n\n${entry}`.length > 3800) {
+      messages.push(current)
+      current = entry
+    } else current += `\n\n${entry}`
+  }
+  messages.push(current)
+  return messages
+}
+
+async function listConsultationRequests(message) {
+  if (!adminIds().includes(message.from.id)) return reply(message.chat.id, "⛔️ این دستور فقط برای مدیران ربات فعال است.")
+  const rows = await listConsultations()
+  for (const text of consultationListMessages(rows)) await reply(message.chat.id, text)
 }
 
 async function academyMenu(message, session, text) {
@@ -431,7 +535,9 @@ const handlers = {
   EXAM_TARAZ: examTaraz,
   RANK_CONTACT: contact,
   ACADEMY_MENU: academyMenu,
-  SCHOOL_MENU: schoolMenu
+  SCHOOL_MENU: schoolMenu,
+  CONSULT_CONTACT: consultationContact,
+  CONSULT_INTERESTS: consultationInterests
 }
 
 export async function processUpdate(update) {
@@ -444,6 +550,8 @@ export async function processUpdate(update) {
     const text = String(message.text || "").trim()
     if (text === "/start" || text.startsWith("/start@")) await start(message, session)
     else if (text === "/admincheck" || text.startsWith("/admincheck@")) await adminCheck(message)
+    else if (text === "/moshavereha" || text.startsWith("/moshavereha@")) await listConsultationRequests(message)
+    else if (text === "/moshavere" || text.startsWith("/moshavere@")) await startConsultation(message, session)
     else if (text === "/cancel" || text.startsWith("/cancel@")) {
       session.data = clearCalculation(session.data)
       session.state = "IDLE"
