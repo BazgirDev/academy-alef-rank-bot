@@ -48,12 +48,6 @@ const contactKeyboard = {
     one_time_keyboard: true
   }
 }
-const channelCheckKeyboard = keyboard([["✅ عضویتم را بررسی کن"]], true)
-const channelJoinButton = {
-  reply_markup: {
-    inline_keyboard: [[{ text: "📢 عضویت در کانال آکادمی الف", url: "https://t.me/academyfirooznia" }]]
-  }
-}
 const removeKeyboard = { reply_markup: { remove_keyboard: true } }
 const consultationValueText = `✅🎉 *نتیجه تخمینی شما آماده است!*
 
@@ -100,7 +94,7 @@ function numberFrom(text) {
 }
 
 function clearCalculation(data) {
-  return Object.fromEntries(["channel_verified", "contact_verified", "phone_number", "contact_name", "last_estimate"].filter(key => key in data).map(key => [key, data[key]]))
+  return Object.fromEntries(["contact_verified", "phone_number", "contact_name", "last_estimate"].filter(key => key in data).map(key => [key, data[key]]))
 }
 
 function rememberEstimate(session, details, result) {
@@ -158,18 +152,6 @@ async function sendPhoto(chatId, file, caption) {
   await telegram().sendPhoto(chatId, Input.fromLocalFile(file), { caption, parse_mode: "Markdown" })
 }
 
-async function isChannelMember(userId) {
-  const member = await telegram().getChatMember("@academyfirooznia", userId)
-  return ["creator", "administrator", "member"].includes(member.status)
-}
-
-async function requestChannelMembership(message, session) {
-  session.data.channel_verified = false
-  session.state = "CHANNEL_VERIFY"
-  await markdown(message.chat.id, "🔒 *برای استفاده از ربات ابتدا عضو کانال آکادمی الف شو.*", channelJoinButton)
-  await reply(message.chat.id, "بعد از عضویت، دکمه زیر را بزن 👇", channelCheckKeyboard)
-}
-
 async function welcome(message, session) {
   await typing(message.chat.id)
   const user = message.from
@@ -198,30 +180,7 @@ async function showResult(chatId, userId, session, result, suggestRank = false) 
 
 async function start(message, session) {
   session.data = clearCalculation(session.data)
-  try {
-    if (await isChannelMember(message.from.id)) {
-      session.data.channel_verified = true
-      await welcome(message, session)
-      return
-    }
-  } catch {
-    session.data.channel_verified = false
-  }
-  await requestChannelMembership(message, session)
-}
-
-async function verifyChannel(message, session) {
-  try {
-    if (await isChannelMember(message.from.id)) {
-      session.data.channel_verified = true
-      await reply(message.chat.id, "✅ عضویت شما تأیید شد.", removeKeyboard)
-      await welcome(message, session)
-      return
-    }
-    await reply(message.chat.id, "❌ هنوز عضو کانال نیستی. ابتدا عضو شو و دوباره بررسی کن.", channelCheckKeyboard)
-  } catch {
-    await reply(message.chat.id, "⚠️ بررسی عضویت ممکن نشد. مطمئن شو ربات در کانال ادمین است و دوباره امتحان کن.", channelCheckKeyboard)
-  }
+  await welcome(message, session)
 }
 
 async function adminCheck(message) {
@@ -611,7 +570,6 @@ async function schoolMenu(message, session, text) {
 }
 
 const handlers = {
-  CHANNEL_VERIFY: verifyChannel,
   MAIN_MENU: mainMenu,
   RANK_MENU: rankMenu,
   RANK_FIELD: rankField,
@@ -643,10 +601,6 @@ export async function processUpdate(update) {
     const session = await loadUser(message.from.id)
     const text = String(message.text || "").trim()
     if (text === "/start" || text.startsWith("/start@")) await start(message, session)
-    else if (!session.data.channel_verified) {
-      if (text === "✅ عضویتم را بررسی کن") await verifyChannel(message, session)
-      else await requestChannelMembership(message, session)
-    }
     else if (text === "/admincheck" || text.startsWith("/admincheck@")) await adminCheck(message)
     else if (text === "/moshavereha" || text.startsWith("/moshavereha@") || text === "📋 فرم‌های مشاوره") await listConsultationRequests(message)
     else if (text === "/contact" || text.startsWith("/contact@") || text === "👥 مخاطبین") await listSavedContacts(message)
