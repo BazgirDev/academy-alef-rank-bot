@@ -1,6 +1,6 @@
 import test from "node:test"
 import assert from "node:assert/strict"
-import { consultationListMessages, estimateAdminText } from "../src/bot.js"
+import { consultationListMessages, contactListSummary, estimateAdminText } from "../src/bot.js"
 
 test("estimateAdminText includes rank, taraz and full result", () => {
   const text = estimateAdminText({
@@ -14,6 +14,11 @@ test("estimateAdminText includes rank, taraz and full result", () => {
   assert.match(text, /تراز: 9000/)
   assert.match(text, /رتبه: ۳۳۰۰-۴۸۰۰/)
   assert.match(text, /نتیجه کامل/)
+})
+
+test("contactListSummary reports saved contact count", () => {
+  assert.match(contactListSummary([]), /تعداد کل: ۰/)
+  assert.match(contactListSummary([{ user_id: "1" }, { user_id: "2" }]), /تعداد کل: 2/)
 })
 
 test("consultationListMessages reports total and all requests", () => {

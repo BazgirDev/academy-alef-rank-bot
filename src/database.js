@@ -29,6 +29,20 @@ async function initialize() {
     estimate JSONB,
     requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`
+  await sql`CREATE TABLE IF NOT EXISTS contacts (
+    user_id BIGINT PRIMARY KEY,
+    chat_id BIGINT NOT NULL,
+    full_name TEXT NOT NULL,
+    username TEXT,
+    phone_number TEXT NOT NULL,
+    shared_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`
+  await sql`INSERT INTO contacts (user_id, chat_id, full_name, username, phone_number, shared_at)
+    SELECT user_id, user_id, COALESCE(NULLIF(data->>'contact_name', ''), '—'), NULL,
+      data->>'phone_number', updated_at
+    FROM bot_users
+    WHERE NULLIF(data->>'phone_number', '') IS NOT NULL
+    ON CONFLICT (user_id) DO NOTHING`
   initialized = true
 }
 
@@ -89,4 +103,25 @@ export async function listConsultations() {
   return sql`SELECT user_id, full_name, username, phone_number, interests, estimate, requested_at
     FROM consultation_requests
     ORDER BY requested_at DESC`
+}
+
+export async function saveContact(contact) {
+  await initialize()
+  const sql = client()
+  await sql`INSERT INTO contacts (user_id, chat_id, full_name, username, phone_number, shared_at)
+    VALUES (${contact.userId}, ${contact.chatId}, ${contact.fullName}, ${contact.username || null}, ${contact.phoneNumber}, NOW())
+    ON CONFLICT (user_id) DO UPDATE SET
+      chat_id = EXCLUDED.chat_id,
+      full_name = EXCLUDED.full_name,
+      username = EXCLUDED.username,
+      phone_number = EXCLUDED.phone_number,
+      shared_at = NOW()`
+}
+
+export async function listContacts() {
+  await initialize()
+  const sql = client()
+  return sql`SELECT user_id, chat_id, full_name, username, phone_number, shared_at
+    FROM contacts
+    ORDER BY shared_at DESC`
 }
