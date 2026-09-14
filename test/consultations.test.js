@@ -2,7 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { consultationListMessages, contactListSummary, estimateAdminText } from "../src/bot.js"
 
-test("estimateAdminText includes rank, taraz and full result", () => {
+test("estimateAdminText includes only compact consultation fields", () => {
   const text = estimateAdminText({
     type: "تخمین رتبه با تراز کل",
     field: "tajrobi",
@@ -13,7 +13,9 @@ test("estimateAdminText includes rank, taraz and full result", () => {
   })
   assert.match(text, /تراز: 9000/)
   assert.match(text, /رتبه: ۳۳۰۰-۴۸۰۰/)
-  assert.match(text, /نتیجه کامل/)
+  assert.match(text, /تجربی/)
+  assert.match(text, /منطقه 2/)
+  assert.doesNotMatch(text, /نتیجه کامل/)
 })
 
 test("contactListSummary reports saved contact count", () => {

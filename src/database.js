@@ -82,19 +82,15 @@ export async function saveUser(userId, state, data) {
 export async function saveConsultation(request) {
   await initialize()
   const sql = client()
-  await sql`INSERT INTO consultation_requests (
+  const rows = await sql`INSERT INTO consultation_requests (
       user_id, full_name, username, phone_number, interests, estimate, requested_at
     ) VALUES (
       ${request.userId}, ${request.fullName}, ${request.username || null},
       ${request.phoneNumber}, ${request.interests}, ${JSON.stringify(request.estimate || null)}, NOW()
     )
-    ON CONFLICT (user_id) DO UPDATE SET
-      full_name = EXCLUDED.full_name,
-      username = EXCLUDED.username,
-      phone_number = EXCLUDED.phone_number,
-      interests = EXCLUDED.interests,
-      estimate = EXCLUDED.estimate,
-      requested_at = NOW()`
+    ON CONFLICT (user_id) DO NOTHING
+    RETURNING user_id`
+  return rows.length === 1
 }
 
 export async function listConsultations() {
