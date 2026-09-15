@@ -18,9 +18,6 @@ import {
 import {
   CONTACT_TEXT,
   PANSION_TEXT,
-  PLAN_4PLUS3_TEXT,
-  PLAN_STRATEGY_TEXT,
-  RANKS_TEXT,
   TEACHERS_TEXT_1,
   TEACHERS_TEXT_2
 } from "./content.js"
@@ -29,18 +26,16 @@ const rootDirectory = path.resolve(path.dirname(fileURLToPath(import.meta.url)),
 const assets = {
   ranks: path.join(rootDirectory, "assets", "ranks.jpg"),
   pansion: path.join(rootDirectory, "assets", "pansion.png"),
-  plan: path.join(rootDirectory, "assets", "plan_4plus3.jpg")
 }
 
-const mainKeyboard = keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["🏛 درباره آکادمی الف"], ["🏫 مدرسه کنکور الف"], ["📞 ارتباط با ما"]])
-const rankToolsKeyboard = keyboard([["📊 تخمین رتبه کنکور با تراز کل"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📝 تخمین تراز از آزمون آزمایشی"], ["🔙 بازگشت به منوی اصلی"]])
+const mainKeyboard = keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
+const rankToolsKeyboard = keyboard([["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📝 تخمین تراز از آزمون آزمایشی"], ["🔙 بازگشت به منوی اصلی"]])
 const rankFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی"]], true)
 const gpaFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
 const regionKeyboard = keyboard([["🥇 منطقه ۱", "🥈 منطقه ۲", "🥉 منطقه ۳"]], true)
 const gpaModeKeyboard = keyboard([["📘 معدل کل"], ["📚 نمرات تک‌درس"], ["🔙 بازگشت"]])
 const examKeyboard = keyboard([["📌 ماز", "📌 قلمچی"], ["🔙 بازگشت به تخمین رتبه"]])
 const academyKeyboard = keyboard([["🏆 رتبه‌های برتر"], ["🏠 پانسیون مطالعاتی"], ["👨‍🏫 اساتید"], ["🔙 بازگشت به منوی اصلی"]])
-const schoolKeyboard = keyboard([["📘 پلن جامع ۴+۳"], ["🧩 استراتژی پلن ۴+۳"], ["🔙 بازگشت به منوی اصلی"]])
 const contactKeyboard = {
   reply_markup: {
     keyboard: [[{ text: "📱 ارسال شماره من", request_contact: true }], [{ text: "🔙 بازگشت به منوی اصلی" }]],
@@ -84,7 +79,7 @@ function adminIds() {
 
 function mainKeyboardFor(userId) {
   if (!adminIds().includes(Number(userId))) return mainKeyboard
-  return keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["📋 فرم‌های مشاوره", "👥 مخاطبین"], ["🏛 درباره آکادمی الف"], ["🏫 مدرسه کنکور الف"], ["📞 ارتباط با ما"]])
+  return keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["📋 فرم‌های مشاوره", "👥 مخاطبین"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
 }
 
 function numberFrom(text) {
@@ -149,7 +144,8 @@ async function persistSharedContact(message, value, session) {
 }
 
 async function sendPhoto(chatId, file, caption) {
-  await telegram().sendPhoto(chatId, Input.fromLocalFile(file), { caption, parse_mode: "Markdown" })
+  const extra = caption ? { caption, parse_mode: "Markdown" } : {}
+  await telegram().sendPhoto(chatId, Input.fromLocalFile(file), extra)
 }
 
 async function welcome(message, session) {
@@ -202,10 +198,6 @@ async function mainMenu(message, session, text) {
     await typing(message.chat.id)
     await markdown(message.chat.id, "🏛 *درباره آکادمی الف*\n\nآکادمی الف مجموعه‌ای آموزشی با تمرکز بر آموزش هدفمند، مشاوره، پانسیون مطالعاتی و همراهی مستمر دانش‌آموزان است.\n\nموضوع موردنظر را انتخاب کنید:", academyKeyboard)
     session.state = "ACADEMY_MENU"
-  } else if (text === "🏫 مدرسه کنکور الف") {
-    await typing(message.chat.id)
-    await markdown(message.chat.id, "🏫 *مدرسه کنکور الف*\n\nمدرسه‌ای تحت نظارت مهندس ارسلان فیروزنیا که کلاس، آزمون، مشاوره و سبک مطالعاتی آن برای موفقیت در کنکور و امتحان نهایی هماهنگ شده است.\n\nیکی از گزینه‌های زیر را انتخاب کنید:", schoolKeyboard)
-    session.state = "SCHOOL_MENU"
   } else if (text === "📞 ارتباط با ما") {
     await typing(message.chat.id)
     await markdown(message.chat.id, CONTACT_TEXT, mainKeyboardFor(message.from.id))
@@ -219,6 +211,7 @@ async function mainMenu(message, session, text) {
 async function rankMenu(message, session, text) {
   const choices = {
     "📊 تخمین رتبه کنکور با تراز کل": ["RANK_FIELD", "📊 *تخمین رتبه کنکور با تراز کل*\n\nابتدا رشته خودت را انتخاب کن:", rankFieldKeyboard],
+    "🎓 تخمین قبولی با رتبه": ["ADMISSION_FIELD", "🎓 *تخمین قبولی با رتبه*\n\nگروه آزمایشی خودت را انتخاب کن:", gpaFieldKeyboard],
     "📈 تخمین تراز معدل امتحان نهایی": ["GPA_FIELD", "📈 *تخمین تراز معدل امتحان نهایی*\n\nرشته خودت را انتخاب کن:", gpaFieldKeyboard],
     "🧪 تخمین رتبه با درصد + معدل نهایی": ["PCT_FIELD", "🧪 *تخمین رتبه با درصد دروس + معدل نهایی*\n\nرشته خودت را انتخاب کن:", rankFieldKeyboard],
     "📝 تخمین تراز از آزمون آزمایشی": ["EXAM_TYPE", "📝 *تخمین تراز از آزمون آزمایشی*\n\nکدام آزمون را شرکت کرده‌ای؟", examKeyboard]
@@ -267,10 +260,36 @@ async function rankScore(message, session, text) {
   await typing(message.chat.id)
   const loading = await reply(message.chat.id, "⏳ در حال محاسبه...")
   const rank = findRank(session.data.field, session.data.region, score)
-  const admission = admissionSuggestions(session.data.field, rank)
+  const admission = admissionSuggestions(session.data.field, session.data.region, rank)
   const result = [formatRankResult(session.data.field, session.data.region, score, rank), admission].filter(Boolean).join("\n\n")
   rememberEstimate(session, { type: "تخمین رتبه با تراز کل", field: session.data.field, region: session.data.region, taraz: score, rank }, result)
   await telegram().editMessageText(message.chat.id, loading.message_id, undefined, "✅ محاسبه با موفقیت انجام شد.")
+  await showResult(message.chat.id, message.from.id, session, result)
+}
+
+async function admissionField(message, session, text) {
+  const field = selectedField(text, true)
+  if (!field) return reply(message.chat.id, "لطفاً یکی از دکمه‌ها را انتخاب کن.", gpaFieldKeyboard)
+  session.data.field = field
+  await reply(message.chat.id, "📍 منطقه خودت را انتخاب کن:", regionKeyboard)
+  session.state = "ADMISSION_REGION"
+}
+
+async function admissionRegion(message, session, text) {
+  if (!regionMap[text]) return reply(message.chat.id, "لطفاً یکی از مناطق را انتخاب کن.", regionKeyboard)
+  session.data.region = regionMap[text]
+  await markdown(message.chat.id, "🏆 رتبه‌ات را وارد کن:\n\nمثال: `1850`", removeKeyboard)
+  session.state = "ADMISSION_RANK"
+}
+
+async function admissionRank(message, session, text) {
+  const rank = numberFrom(text)
+  if (rank === null || rank < 1) return reply(message.chat.id, "⚠️ یک رتبه معتبر وارد کن.")
+  const suggestions = admissionSuggestions(session.data.field, session.data.region, String(Math.round(rank)))
+  if (!suggestions) return reply(message.chat.id, "⚠️ برای این انتخاب داده‌ای پیدا نشد.", mainKeyboardFor(message.from.id))
+  const fieldName = { tajrobi: "تجربی", riazi: "ریاضی", ensani: "انسانی" }[session.data.field]
+  const result = `🎯 *نتیجه تخمین قبولی*\n\n🎓 گروه: *${fieldName}*\n📍 منطقه: *${session.data.region}*\n🏆 رتبه: *${Math.round(rank)}*\n\n${suggestions}`
+  rememberEstimate(session, { type: "تخمین قبولی با رتبه", field: session.data.field, region: session.data.region, rank: String(Math.round(rank)) }, result)
   await showResult(message.chat.id, message.from.id, session, result)
 }
 
@@ -388,7 +407,7 @@ async function pctInput(message, session, text) {
   const rank = findRank(session.data.field, session.data.region, finalTaraz)
   const fieldName = session.data.field === "tajrobi" ? "تجربی" : "ریاضی"
   const rankResult = `🎉 *نتیجه تخمین رتبه (درصد + معدل)*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🎓 رشته: *${fieldName}*\n📍 منطقه: *${session.data.region}*\n📊 معدل: *${session.data.gpa}*\n🧪 میانگین وزنی درصدها: *${average.toFixed(1)}%*\n\n━━━━━━━━━━━━━━━━━━━━\n\nتراز معدل: *${gpaTaraz}* (بازه ${gpaRange[0]} تا ${gpaRange[1]})\nتراز درصد: *${percentageTaraz}*\nتراز کل (۶۰٪ معدل + ۴۰٪ درصد): *${finalTaraz}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🏆 تخمین رتبه:\n*${rank || "خارج از بازه"}*\n\n📈 وضعیت: *${rank ? getStatus(rank) : "—"}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n💡 نتیجه فقط از جدول‌های داده‌شده محاسبه شده است.`
-  const result = [rankResult, admissionSuggestions(session.data.field, rank)].filter(Boolean).join("\n\n")
+  const result = [rankResult, admissionSuggestions(session.data.field, session.data.region, rank)].filter(Boolean).join("\n\n")
   rememberEstimate(session, { type: "تخمین رتبه با درصد و معدل", field: session.data.field, region: session.data.region, gpa: session.data.gpa, weighted_percent: average, taraz: finalTaraz, rank }, result)
   await showResult(message.chat.id, message.from.id, session, result)
 }
@@ -544,7 +563,7 @@ async function academyMenu(message, session, text) {
     return
   }
   await typing(message.chat.id)
-  if (text === "🏆 رتبه‌های برتر") await sendPhoto(message.chat.id, assets.ranks, RANKS_TEXT)
+  if (text === "🏆 رتبه‌های برتر") await sendPhoto(message.chat.id, assets.ranks)
   else if (text === "🏠 پانسیون مطالعاتی") await sendPhoto(message.chat.id, assets.pansion, PANSION_TEXT)
   else if (text === "👨‍🏫 اساتید") {
     await markdown(message.chat.id, TEACHERS_TEXT_1)
@@ -553,28 +572,15 @@ async function academyMenu(message, session, text) {
   await reply(message.chat.id, "موضوع دیگری را انتخاب کنید:", academyKeyboard)
 }
 
-async function schoolMenu(message, session, text) {
-  if (text === "🔙 بازگشت به منوی اصلی") {
-    await reply(message.chat.id, "به منوی اصلی بازگشتید.", mainKeyboard)
-    session.state = "MAIN_MENU"
-  } else if (text === "📘 پلن جامع ۴+۳") {
-    await typing(message.chat.id)
-    await markdown(message.chat.id, PLAN_4PLUS3_TEXT, schoolKeyboard)
-  } else if (text === "🧩 استراتژی پلن ۴+۳") {
-    await typing(message.chat.id)
-    await sendPhoto(message.chat.id, assets.plan, PLAN_STRATEGY_TEXT)
-    await reply(message.chat.id, "گزینه دیگری را انتخاب کنید:", schoolKeyboard)
-  } else {
-    await reply(message.chat.id, "لطفاً یکی از گزینه‌ها را انتخاب کنید.", schoolKeyboard)
-  }
-}
-
 const handlers = {
   MAIN_MENU: mainMenu,
   RANK_MENU: rankMenu,
   RANK_FIELD: rankField,
   RANK_REGION: (message, session, text) => chooseRegion(message, session, text, "RANK_SCORE"),
   RANK_SCORE: rankScore,
+  ADMISSION_FIELD: admissionField,
+  ADMISSION_REGION: admissionRegion,
+  ADMISSION_RANK: admissionRank,
   GPA_FIELD: gpaField,
   GPA_MODE: gpaMode,
   GPA_TOTAL: gpaTotal,
@@ -587,7 +593,6 @@ const handlers = {
   EXAM_TARAZ: examTaraz,
   RANK_CONTACT: contact,
   ACADEMY_MENU: academyMenu,
-  SCHOOL_MENU: schoolMenu,
   CONSULT_CONTACT: consultationContact,
   CONSULT_INTERESTS: startConsultation
 }
