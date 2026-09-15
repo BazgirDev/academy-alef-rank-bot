@@ -3,7 +3,6 @@ import assert from "node:assert/strict"
 import {
   calcWeightedGpa,
   calcWeightedPercent,
-  evaluateExamTaraz,
   findRank,
   getStatus,
   gpaToTarazRange,
@@ -34,9 +33,7 @@ test("weighted calculations use configured coefficients", () => {
   assert.equal(calcWeightedPercent({ riaziat: 50 }, "riazi"), null)
 })
 
-test("status and exam evaluation preserve user-facing logic", () => {
+test("status evaluation preserves user-facing logic", () => {
   assert.equal(getStatus("زیر ۲۰۰"), "عالی 🔥")
   assert.equal(getStatus("۳۳۰۰-۴۸۰۰"), "خوب")
-  assert.match(evaluateExamTaraz("maz", 12000), /عالی/)
-  assert.match(evaluateExamTaraz("ghalamchi", 9000), /خارج از بازه/)
 })

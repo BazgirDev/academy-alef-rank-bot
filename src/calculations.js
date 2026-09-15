@@ -87,11 +87,6 @@ export const PERCENT_TARAZ_DATA_1404 = {
   riazi: [[0, 4489], [5, 5477], [10, 6328], [15, 7056], [20, 7675], [25, 8202], [30, 8650], [35, 9035], [40, 9371], [45, 9674], [50, 9958], [55, 10239], [60, 10531], [65, 10850], [70, 11209], [75, 11625], [80, 12112], [85, 12685], [90, 13358], [95, 14148], [100, 14200]]
 }
 
-export const EXAM_RANGES = {
-  maz: { name: "ماز", min: 7000, max: 13000, levels: [[12000, 13001, "عالی 🔥 (رتبه زیر ۵۰۰ محتمل)"], [11000, 12000, "خیلی خوب ⭐ (رتبه حدود ۵۰۰–۱۵۰۰)"], [10000, 11000, "خوب (رتبه حدود ۱۵۰۰–۴۰۰۰)"], [9000, 10000, "متوسط رو به بالا"], [8000, 9000, "متوسط"], [7000, 8000, "ضعیف رو به متوسط"]] },
-  ghalamchi: { name: "قلمچی", min: 4000, max: 8500, levels: [[7800, 8501, "عالی 🔥"], [7200, 7800, "خیلی خوب ⭐"], [6500, 7200, "خوب"], [5800, 6500, "متوسط رو به بالا"], [5000, 5800, "متوسط"], [4000, 5000, "ضعیف"]] }
-}
-
 export function findRank(field, region, score) {
   const item = (RANK_DATA[field?.toLowerCase().trim()] || []).find(row => row.min <= score && score < row.max)
   return item?.ranks[String(region).trim()] || null
@@ -179,12 +174,4 @@ export function getStatus(rank) {
 export function formatRankResult(field, region, score, rank) {
   const fieldName = { tajrobi: "تجربی", riazi: "ریاضی", ensani: "انسانی" }[field] || field
   return `🎉 *نتیجه تخمین رتبه*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🎓 رشته: *${fieldName}*\n📍 منطقه: *${region}*\n📊 تراز: *${score}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🏆 تخمین رتبه:\n*${rank || "خارج از بازه تعریف‌شده"}*\n\n📈 وضعیت: *${rank ? getStatus(rank) : "—"}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n💡 این تخمین تقریبی است و ممکن است با نتیجه نهایی اختلاف داشته باشد.`
-}
-
-export function evaluateExamTaraz(examType, taraz) {
-  const data = EXAM_RANGES[examType]
-  if (!data) return "❌ نوع آزمون نامعتبر است."
-  if (taraz < data.min || taraz > data.max) return `⚠️ تراز وارد شده خارج از بازه معمول ${data.name} است.\nبازه تقریبی: ${data.min} تا ${data.max}`
-  const level = data.levels.find(([low, high]) => low <= taraz && taraz < high)?.[2] || "نیاز به تلاش بیشتر"
-  return `📝 *نتیجه تحلیل تراز ${data.name}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n📊 تراز شما: *${taraz}*\n\n📈 سطح تقریبی:\n*${level}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n💡 این تحلیل تقریبی است و بستگی به جامعه آماری همان آزمون دارد.`
 }

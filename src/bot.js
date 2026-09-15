@@ -8,7 +8,6 @@ import {
   PCT_SUBJECTS,
   calcWeightedGpa,
   calcWeightedPercent,
-  evaluateExamTaraz,
   findRank,
   formatRankResult,
   getStatus,
@@ -29,12 +28,11 @@ const assets = {
 }
 
 const mainKeyboard = keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
-const rankToolsKeyboard = keyboard([["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📝 تخمین تراز از آزمون آزمایشی"], ["🔙 بازگشت به منوی اصلی"]])
+const rankToolsKeyboard = keyboard([["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🧪 تخمین رتبه با درصد + معدل نهایی"], ["🔙 بازگشت به منوی اصلی"]])
 const rankFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی"]], true)
 const gpaFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
 const regionKeyboard = keyboard([["🥇 منطقه ۱", "🥈 منطقه ۲", "🥉 منطقه ۳"]], true)
 const gpaModeKeyboard = keyboard([["📘 معدل کل"], ["📚 نمرات تک‌درس"], ["🔙 بازگشت"]])
-const examKeyboard = keyboard([["📌 ماز", "📌 قلمچی"], ["🔙 بازگشت به تخمین رتبه"]])
 const academyKeyboard = keyboard([["🏆 رتبه‌های برتر"], ["🏠 پانسیون مطالعاتی"], ["👨‍🏫 اساتید"], ["🔙 بازگشت به منوی اصلی"]])
 const contactKeyboard = {
   reply_markup: {
@@ -213,8 +211,7 @@ async function rankMenu(message, session, text) {
     "📊 تخمین رتبه کنکور با تراز کل": ["RANK_FIELD", "📊 *تخمین رتبه کنکور با تراز کل*\n\nابتدا رشته خودت را انتخاب کن:", rankFieldKeyboard],
     "🎓 تخمین قبولی با رتبه": ["ADMISSION_FIELD", "🎓 *تخمین قبولی با رتبه*\n\nگروه آزمایشی خودت را انتخاب کن:", gpaFieldKeyboard],
     "📈 تخمین تراز معدل امتحان نهایی": ["GPA_FIELD", "📈 *تخمین تراز معدل امتحان نهایی*\n\nرشته خودت را انتخاب کن:", gpaFieldKeyboard],
-    "🧪 تخمین رتبه با درصد + معدل نهایی": ["PCT_FIELD", "🧪 *تخمین رتبه با درصد دروس + معدل نهایی*\n\nرشته خودت را انتخاب کن:", rankFieldKeyboard],
-    "📝 تخمین تراز از آزمون آزمایشی": ["EXAM_TYPE", "📝 *تخمین تراز از آزمون آزمایشی*\n\nکدام آزمون را شرکت کرده‌ای؟", examKeyboard]
+    "🧪 تخمین رتبه با درصد + معدل نهایی": ["PCT_FIELD", "🧪 *تخمین رتبه با درصد دروس + معدل نهایی*\n\nرشته خودت را انتخاب کن:", rankFieldKeyboard]
   }
   if (text === "🔙 بازگشت به منوی اصلی") {
     await reply(message.chat.id, "به منوی اصلی بازگشتید.", mainKeyboard)
@@ -412,28 +409,6 @@ async function pctInput(message, session, text) {
   await showResult(message.chat.id, message.from.id, session, result)
 }
 
-async function examType(message, session, text) {
-  if (text === "🔙 بازگشت به تخمین رتبه") {
-    await reply(message.chat.id, "به منوی تخمین رتبه بازگشتید.", rankToolsKeyboard)
-    session.state = "RANK_MENU"
-    return
-  }
-  const mapping = { "📌 ماز": "maz", "📌 قلمچی": "ghalamchi" }
-  if (!mapping[text]) return reply(message.chat.id, "لطفاً یکی از گزینه‌ها را انتخاب کن.", examKeyboard)
-  session.data.exam_type = mapping[text]
-  await typing(message.chat.id)
-  await markdown(message.chat.id, `✅ آزمون: *${mapping[text] === "maz" ? "ماز" : "قلمچی"}*\n\nحالا تراز خودت را وارد کن:`, removeKeyboard)
-  session.state = "EXAM_TARAZ"
-}
-
-async function examTaraz(message, session, text) {
-  const taraz = numberFrom(text)
-  if (taraz === null) return reply(message.chat.id, "⚠️ لطفاً یک عدد معتبر وارد کن.")
-  const result = evaluateExamTaraz(session.data.exam_type, taraz)
-  rememberEstimate(session, { type: "تحلیل تراز آزمون آزمایشی", exam: session.data.exam_type, taraz }, result)
-  await showResult(message.chat.id, message.from.id, session, result, true)
-}
-
 async function contact(message, session, text) {
   if (text === "🔙 بازگشت به منوی اصلی") {
     delete session.data.pending_result
@@ -589,8 +564,6 @@ const handlers = {
   PCT_REGION: (message, session, text) => chooseRegion(message, session, text, "PCT_GPA"),
   PCT_GPA: pctGpa,
   PCT_SUBJECTS_INPUT: pctInput,
-  EXAM_TYPE: examType,
-  EXAM_TARAZ: examTaraz,
   RANK_CONTACT: contact,
   ACADEMY_MENU: academyMenu,
   CONSULT_CONTACT: consultationContact,
