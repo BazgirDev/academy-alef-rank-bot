@@ -10,7 +10,6 @@ import {
   calcWeightedPercent,
   findRank,
   formatRankResult,
-  getStatus,
   gpaToTarazRange,
   percentToTaraz
 } from "./calculations.js"
@@ -28,8 +27,10 @@ const assets = {
 }
 
 const mainKeyboard = keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
+const consultationButtonText = "مشاوره و بررسی تخصصی شانس قبولی"
+const resultKeyboard = { reply_markup: { inline_keyboard: [[{ text: consultationButtonText, callback_data: "consultation_data" }]] } }
 const rankToolsKeyboard = keyboard([["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🧪 تخمین رتبه با درصد + معدل نهایی"], ["🔙 بازگشت به منوی اصلی"]])
-const rankFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی"]], true)
+const rankFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
 const gpaFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
 const regionKeyboard = keyboard([["🥇 منطقه ۱", "🥈 منطقه ۲", "🥉 منطقه ۳"]], true)
 const gpaModeKeyboard = keyboard([["📘 معدل کل"], ["📚 نمرات تک‌درس"], ["🔙 بازگشت"]])
@@ -44,15 +45,7 @@ const contactKeyboard = {
 const removeKeyboard = { reply_markup: { remove_keyboard: true } }
 const consultationValueText = `✅🎉 *نتیجه تخمینی شما آماده است!*
 
-🎯 برای بررسی دقیق‌تر نتیجه و دریافت این خدمات، می‌توانی از مشاوره رایگان استفاده کنی:
-
-📊 رتبه دقیق‌تر با در نظر گرفتن داده‌های سال‌های اخیر
-🏫 بررسی شانس قبولی در رشته‌ها و دانشگاه‌ها
-🧭 پیشنهاد اولیه انتخاب رشته
-📞 مشاوره رایگان ۵ دقیقه‌ای
-📝 شبیه‌سازی طرح انتخاب رشته کامل
-
-🚀 برای ثبت مستقیم درخواست و تماس تیم مشاوره، دستور /moshavere را بفرست.`
+🎯 برای بررسی دقیق‌تر نتیجه و دریافت مشاوره تلفنی و بررسی نتیجه به صورت تخصصی‌تر، دکمه زیر را فشار دهید 👇🏻`
 const rankFromTarazText = `🎯 *حالا برو ببین با این تراز، رتبه‌ات چند می‌شود.*
 
 تخمین رتبه بر اساس داده‌های ربات با دقت بیش از ۹۰٪ انجام می‌شود.
@@ -157,16 +150,16 @@ async function welcome(message, session) {
 }
 
 async function showResult(chatId, userId, session, result, suggestRank = false) {
+  const completeResult = `${consultationValueText}\n\n${result}`
   if (session.data.contact_verified) {
     await typing(chatId)
-    await markdown(chatId, result, mainKeyboardFor(userId))
+    await markdown(chatId, completeResult, resultKeyboard)
     if (suggestRank) await markdown(chatId, rankFromTarazText, rankToolsKeyboard)
-    await markdown(chatId, consultationValueText, mainKeyboardFor(userId))
     session.data = clearCalculation(session.data)
     session.state = "MAIN_MENU"
     return
   }
-  session.data.pending_result = result
+  session.data.pending_result = completeResult
   session.data.pending_rank_suggestion = suggestRank
   await reply(chatId, "✅ محاسبه انجام شد.\n\nبرای مشاهده نتیجه نهایی، رتبه یا تراز، فقط یک‌بار شماره خودت را با دکمه زیر Share کن. شماره پس از تأیید برای مدیران آکادمی ارسال می‌شود.", contactKeyboard)
   session.state = "RANK_CONTACT"
@@ -174,6 +167,18 @@ async function showResult(chatId, userId, session, result, suggestRank = false) 
 
 async function start(message, session) {
   session.data = clearCalculation(session.data)
+  if (session.data.contact_verified && session.data.phone_number) return welcome(message, session)
+  await markdown(message.chat.id, "👋 *خوش آمدید به آکادمی الف*\n\nبرای استفاده از تخمین رتبه، بررسی شانس قبولی و خدمات ربات، ابتدا باید شمارهٔ متعلق به خودت را با دکمهٔ زیر Share کنی.\n\n🔒 شماره فقط برای ثبت درخواست و تماس مشاوره آکادمی استفاده می‌شود.", contactKeyboard)
+  session.state = "START_CONTACT"
+}
+
+async function startContact(message, session, text) {
+  if (text === "🔙 بازگشت به منوی اصلی") return reply(message.chat.id, "برای استفاده از ربات، ابتدا شمارهٔ خودت را با دکمهٔ «📱 ارسال شماره من» تأیید کن.", contactKeyboard)
+  const value = message.contact
+  if (!value) return reply(message.chat.id, "لطفاً شمارهٔ خودت را فقط با دکمهٔ «📱 ارسال شماره من» تأیید کن.", contactKeyboard)
+  if (value.user_id !== message.from.id) return reply(message.chat.id, "⚠️ این شماره متعلق به حساب تلگرام شما نیست. لطفاً شمارهٔ خودت را ارسال کن.", contactKeyboard)
+  const fullName = await persistSharedContact(message, value, session)
+  await notifyAdmins(`📥 مخاطب جدید ربات\n\nنام: ${fullName}\nشماره: ${value.phone_number}\nنام کاربری: ${message.from.username ? `@${message.from.username}` : "—"}\nشناسه تلگرام: ${message.from.id}`, value)
   await welcome(message, session)
 }
 
@@ -234,7 +239,7 @@ function selectedField(text, allowHumanities = false) {
 }
 
 async function rankField(message, session, text) {
-  const field = selectedField(text)
+  const field = selectedField(text, true)
   if (!field) return reply(message.chat.id, "لطفاً یکی از دکمه‌ها را انتخاب کن.", rankFieldKeyboard)
   session.data.field = field
   await typing(message.chat.id)
@@ -402,8 +407,7 @@ async function pctInput(message, session, text) {
   const gpaTaraz = Math.round((gpaRange[0] + gpaRange[1]) / 2)
   const finalTaraz = Math.round(gpaTaraz * 0.6 + percentageTaraz * 0.4)
   const rank = findRank(session.data.field, session.data.region, finalTaraz)
-  const fieldName = session.data.field === "tajrobi" ? "تجربی" : "ریاضی"
-  const rankResult = `🎉 *نتیجه تخمین رتبه (درصد + معدل)*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🎓 رشته: *${fieldName}*\n📍 منطقه: *${session.data.region}*\n📊 معدل: *${session.data.gpa}*\n🧪 میانگین وزنی درصدها: *${average.toFixed(1)}%*\n\n━━━━━━━━━━━━━━━━━━━━\n\nتراز معدل: *${gpaTaraz}* (بازه ${gpaRange[0]} تا ${gpaRange[1]})\nتراز درصد: *${percentageTaraz}*\nتراز کل (۶۰٪ معدل + ۴۰٪ درصد): *${finalTaraz}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n🏆 تخمین رتبه:\n*${rank || "خارج از بازه"}*\n\n📈 وضعیت: *${rank ? getStatus(rank) : "—"}*\n\n━━━━━━━━━━━━━━━━━━━━\n\n💡 نتیجه فقط از جدول‌های داده‌شده محاسبه شده است.`
+  const rankResult = `🎉 *نتیجه تخمین رتبه*\n\n📊 تراز معدل: *${gpaTaraz}*\n📈 تراز درصد: *${percentageTaraz}*\n⭐ تراز کل: *${finalTaraz}*\n\n🏆 رتبه تقریبی: *${rank || "خارج از بازه"}*`
   const result = [rankResult, admissionSuggestions(session.data.field, session.data.region, rank)].filter(Boolean).join("\n\n")
   rememberEstimate(session, { type: "تخمین رتبه با درصد و معدل", field: session.data.field, region: session.data.region, gpa: session.data.gpa, weighted_percent: average, taraz: finalTaraz, rank }, result)
   await showResult(message.chat.id, message.from.id, session, result)
@@ -427,9 +431,8 @@ async function contact(message, session, text) {
   delete session.data.pending_rank_suggestion
   if (pending) {
     await reply(message.chat.id, "✅ شماره شما تأیید شد. نتیجه محاسبه:", removeKeyboard)
-    await markdown(message.chat.id, pending, mainKeyboardFor(message.from.id))
+    await markdown(message.chat.id, pending, resultKeyboard)
     if (suggestRank) await markdown(message.chat.id, rankFromTarazText, rankToolsKeyboard)
-    await markdown(message.chat.id, consultationValueText, mainKeyboardFor(message.from.id))
   } else {
     await reply(message.chat.id, "✅ شماره شما تأیید شد. از این به بعد دوباره درخواست نمی‌شود.", mainKeyboard)
   }
@@ -565,6 +568,7 @@ const handlers = {
   PCT_GPA: pctGpa,
   PCT_SUBJECTS_INPUT: pctInput,
   RANK_CONTACT: contact,
+  START_CONTACT: startContact,
   ACADEMY_MENU: academyMenu,
   CONSULT_CONTACT: consultationContact,
   CONSULT_INTERESTS: startConsultation
@@ -572,17 +576,19 @@ const handlers = {
 
 export async function processUpdate(update) {
   if (!update || !Number.isSafeInteger(update.update_id)) return
-  const message = update.message
+  const callback = update.callback_query
+  const message = callback?.message ? { ...callback.message, from: callback.from } : update.message
   if (!message?.from?.id || !message.chat?.id) return
   if (!(await claimUpdate(update.update_id))) return
   try {
     const session = await loadUser(message.from.id)
-    const text = String(message.text || "").trim()
+    const text = callback ? String(callback.data || "") : String(message.text || "").trim()
+    if (callback) await telegram().answerCbQuery(callback.id)
     if (text === "/start" || text.startsWith("/start@")) await start(message, session)
     else if (text === "/admincheck" || text.startsWith("/admincheck@")) await adminCheck(message)
     else if (text === "/moshavereha" || text.startsWith("/moshavereha@") || text === "📋 فرم‌های مشاوره") await listConsultationRequests(message)
     else if (text === "/contact" || text.startsWith("/contact@") || text === "👥 مخاطبین") await listSavedContacts(message)
-    else if (text === "/moshavere" || text.startsWith("/moshavere@")) await startConsultation(message, session)
+    else if (text === "consultation_data" || text === "/data" || text.startsWith("/data@") || text === "/moshavere" || text.startsWith("/moshavere@")) await startConsultation(message, session)
     else if (text === "/cancel" || text.startsWith("/cancel@")) {
       session.data = clearCalculation(session.data)
       session.state = "IDLE"

@@ -2,6 +2,7 @@ import test from "node:test"
 import assert from "node:assert/strict"
 import { admissionSuggestions } from "../src/admissions.js"
 import { ADMISSION_DATA } from "../src/admission-data.js"
+import { ADMISSION_EXTENSIONS } from "../src/admission-extensions.js"
 
 test("admission suggestions use the conservative upper rank bound", () => {
   const text = admissionSuggestions("tajrobi", "1", "۶۳۰-۹۸۰")
@@ -10,8 +11,8 @@ test("admission suggestions use the conservative upper rank bound", () => {
 })
 
 test("stored Excel-derived matrix has three suggestions for every field, region and rank band", () => {
-  const groups = Object.values(ADMISSION_DATA).flatMap(regions => Object.values(regions)).flatMap(buckets => Object.values(buckets))
-  assert.equal(groups.length, 54)
+  const groups = [ADMISSION_DATA, ADMISSION_EXTENSIONS].flatMap(data => Object.values(data).flatMap(regions => Object.values(regions)).flatMap(buckets => Object.values(buckets)))
+  assert.equal(groups.length, 108)
   assert.ok(groups.every(items => items.length === 3))
 })
 

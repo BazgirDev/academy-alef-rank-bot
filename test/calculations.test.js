@@ -13,6 +13,7 @@ test("findRank preserves rank table boundaries", () => {
   assert.equal(findRank("tajrobi", "1", 5000), "۴۲۰۰۰-۴۴۰۰۰")
   assert.equal(findRank("riazi", "3", 10200), "زیر ۵۰")
   assert.equal(findRank("riazi", "1", 100000), null)
+  assert.equal(findRank("ensani", "2", 9000), "۱۱۷۷-۱۷۰۸")
 })
 
 test("gpaToTarazRange returns exact and interpolated values", () => {
