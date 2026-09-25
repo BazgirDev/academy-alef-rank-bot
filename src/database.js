@@ -1,4 +1,5 @@
 import { neon } from "@neondatabase/serverless"
+import { createHmac } from "node:crypto"
 
 let initialized = false
 
@@ -37,6 +38,18 @@ async function initialize() {
     phone_number TEXT NOT NULL,
     shared_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`
+  await sql`CREATE TABLE IF NOT EXISTS referral_codes (
+    code TEXT PRIMARY KEY,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`
+  await sql`CREATE TABLE IF NOT EXISTS referral_starts (
+    anonymous_user_key CHAR(64) NOT NULL,
+    referral_code TEXT NOT NULL REFERENCES referral_codes(code),
+    first_started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (anonymous_user_key, referral_code)
+  )`
+  await sql`CREATE INDEX IF NOT EXISTS referral_starts_code_time_idx
+    ON referral_starts (referral_code, first_started_at)`
   await sql`INSERT INTO contacts (user_id, chat_id, full_name, username, phone_number, shared_at)
     SELECT user_id, user_id, COALESCE(NULLIF(data->>'contact_name', ''), '—'), NULL,
       data->>'phone_number', updated_at
@@ -120,4 +133,43 @@ export async function listContacts() {
   return sql`SELECT user_id, chat_id, full_name, username, phone_number, shared_at
     FROM contacts
     ORDER BY shared_at DESC`
+}
+
+export async function createReferralCode(code) {
+  await initialize()
+  const sql = client()
+  const rows = await sql`INSERT INTO referral_codes (code) VALUES (${code})
+    ON CONFLICT (code) DO NOTHING RETURNING code, created_at`
+  return rows[0] || null
+}
+
+export async function listReferralCodes() {
+  await initialize()
+  const sql = client()
+  return sql`SELECT c.code, c.created_at, COUNT(s.anonymous_user_key)::int AS starts,
+      MIN(s.first_started_at) AS first_start, MAX(s.first_started_at) AS last_start
+    FROM referral_codes c LEFT JOIN referral_starts s ON s.referral_code = c.code
+    GROUP BY c.code, c.created_at ORDER BY c.created_at DESC, c.code`
+}
+
+export async function listReferralDailyStats() {
+  await initialize()
+  const sql = client()
+  return sql`SELECT referral_code AS code,
+      (first_started_at AT TIME ZONE 'Asia/Tehran')::date::text AS start_date,
+      COUNT(*)::int AS starts
+    FROM referral_starts
+    GROUP BY referral_code, (first_started_at AT TIME ZONE 'Asia/Tehran')::date
+    ORDER BY start_date DESC, referral_code`
+}
+
+export async function recordReferralStart(userId, code) {
+  await initialize()
+  if (!process.env.BOT_TOKEN) throw new Error("BOT_TOKEN is required")
+  const anonymousKey = createHmac("sha256", process.env.BOT_TOKEN).update(String(userId)).digest("hex")
+  const sql = client()
+  const rows = await sql`INSERT INTO referral_starts (anonymous_user_key, referral_code)
+    SELECT ${anonymousKey}, code FROM referral_codes WHERE code = ${code}
+    ON CONFLICT (anonymous_user_key, referral_code) DO NOTHING RETURNING referral_code`
+  return rows.length === 1
 }
