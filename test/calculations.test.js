@@ -1,6 +1,7 @@
 import test from "node:test"
 import assert from "node:assert/strict"
 import {
+  GPA_COEF,
   calcWeightedGpa,
   calcWeightedPercent,
   findRank,
@@ -30,8 +31,17 @@ test("percentToTaraz preserves reference values and interpolation", () => {
 
 test("weighted calculations use configured coefficients", () => {
   assert.equal(calcWeightedGpa({ dini: 20, arabi: 10 }, "tajrobi").toFixed(2), "16.46")
+  assert.deepEqual(GPA_COEF.ensani.map(subject => subject.id), ["farsi", "dini", "zaban", "salamat", "riazi_amar", "oloom_fonoon", "arabi", "tarikh", "joghrafia", "jame_shenasi", "falsafe"])
+  assert.equal(calcWeightedGpa({ farsi: 20, falsafe: 10 }, "ensani").toFixed(2), "16.66")
   assert.equal(calcWeightedPercent({ riaziat: 50, shimi: 50, physic: 50 }, "riazi"), 50)
   assert.equal(calcWeightedPercent({ riaziat: 50 }, "riazi"), null)
+  assert.equal(calcWeightedPercent({ riazi: 100, eghtesad: 0, oloom_fonoon: 0, arabi: 0, tarikh_joghrafia: 0, ejtemaei: 0, falsafe_mantegh: 0, ravanshenasi: 0 }, "ensani"), 600 / 38)
+  assert.equal(calcWeightedPercent({ riazi: 50 }, "ensani"), null)
+  assert.equal(percentToTaraz(50, "ensani"), 10855)
+  assert.equal(percentToTaraz(0, "ensani"), 3875)
+  assert.equal(percentToTaraz(7.5, "ensani"), 4670)
+  assert.equal(percentToTaraz(42, "ensani"), 9977)
+  assert.equal(percentToTaraz(-1, "ensani"), null)
 })
 
 test("status evaluation preserves user-facing logic", () => {

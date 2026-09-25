@@ -88,6 +88,14 @@ export const GPA_COEF = {
     { id: "physic", name: "فیزیک ۳", coef: 9.26 }, { id: "shimi", name: "شیمی ۳", coef: 10.7 },
     { id: "gossaste", name: "ریاضیات گسسته", coef: 4.71 }, { id: "salamat", name: "سلامت و بهداشت", coef: 1.76 },
     { id: "ejtemaei", name: "علوم اجتماعی", coef: 1.31 }
+  ],
+  ensani: [
+    { id: "farsi", name: "فارسی ۳", coef: 11.09 }, { id: "dini", name: "تعلیمات دینی ۳", coef: 8.47 },
+    { id: "zaban", name: "زبان خارجی ۳", coef: 6.05 }, { id: "salamat", name: "سلامت و بهداشت", coef: 1.76 },
+    { id: "riazi_amar", name: "ریاضی و آمار ۳", coef: 7.71 }, { id: "oloom_fonoon", name: "علوم و فنون ادبی ۳", coef: 8.68 },
+    { id: "arabi", name: "عربی ۳", coef: 4.30 }, { id: "tarikh", name: "تاریخ ۳", coef: 5.38 },
+    { id: "joghrafia", name: "جغرافیا ۳", coef: 7.71 }, { id: "jame_shenasi", name: "جامعه‌شناسی ۳", coef: 4.96 },
+    { id: "falsafe", name: "فلسفه ۲", coef: 5.55 }
   ]
 }
 
@@ -100,12 +108,19 @@ export const PCT_SUBJECTS = {
   riazi: [
     { id: "riaziat", name: "ریاضیات", coef: 12 }, { id: "shimi", name: "شیمی", coef: 6 },
     { id: "physic", name: "فیزیک", coef: 9 }
+  ],
+  ensani: [
+    { id: "riazi", name: "ریاضی", coef: 6 }, { id: "eghtesad", name: "اقتصاد", coef: 2 },
+    { id: "oloom_fonoon", name: "علوم و فنون ادبی", coef: 8 }, { id: "arabi", name: "زبان عربی", coef: 5 },
+    { id: "tarikh_joghrafia", name: "تاریخ و جغرافیا", coef: 5 }, { id: "ejtemaei", name: "علوم اجتماعی", coef: 5 },
+    { id: "falsafe_mantegh", name: "فلسفه و منطق", coef: 5 }, { id: "ravanshenasi", name: "روان‌شناسی", coef: 2 }
   ]
 }
 
 export const PERCENT_TARAZ_DATA_1404 = {
   tajrobi: [[0, 3712], [5, 5721], [10, 6411], [15, 7210], [20, 7513], [25, 7983], [30, 8380], [35, 8740], [40, 9021], [45, 9397], [50, 10500], [55, 10411], [60, 10859], [65, 11192], [70, 11438], [75, 11953], [80, 12470], [85, 12967], [90, 13422], [95, 13807], [100, 14087]],
-  riazi: [[0, 4489], [5, 5477], [10, 6328], [15, 7056], [20, 7675], [25, 8202], [30, 8650], [35, 9035], [40, 9371], [45, 9674], [50, 9958], [55, 10239], [60, 10531], [65, 10850], [70, 11209], [75, 11625], [80, 12112], [85, 12685], [90, 13358], [95, 14148], [100, 14200]]
+  riazi: [[0, 4489], [5, 5477], [10, 6328], [15, 7056], [20, 7675], [25, 8202], [30, 8650], [35, 9035], [40, 9371], [45, 9674], [50, 9958], [55, 10239], [60, 10531], [65, 10850], [70, 11209], [75, 11625], [80, 12112], [85, 12685], [90, 13358], [95, 14148], [100, 14200]],
+  ensani: [[0, 3875], [5, 4355], [10, 4984], [15, 5416], [20, 5988], [25, 6730], [30, 7679], [35, 8885], [40, 9717], [45, 10368], [50, 10855], [55, 11213], [60, 11495], [65, 11764], [70, 12080], [75, 12491], [80, 13017], [85, 13631], [90, 14200], [95, 14200], [100, 14200]]
 }
 
 export function findRank(field, region, score) {
@@ -136,7 +151,8 @@ export function gpaToTarazRange(gpa, field) {
 
 export function percentToTaraz(average, field = "tajrobi") {
   const data = PERCENT_TARAZ_DATA_1404[field]
-  if (!data || average < -33 || average > 100) return null
+  if (!data || !Number.isFinite(average) || average < -33 || average > 100) return null
+  if (field === "ensani" && average < 0) return null
   if (average < 0) return 3500
   for (let index = 0; index < data.length; index += 1) {
     const [percent1, taraz1] = data[index]

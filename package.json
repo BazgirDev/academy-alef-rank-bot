@@ -7,7 +7,8 @@
   "scripts": {
     "test": "node --test",
     "check": "node --check api/webhook.js && node --check src/bot.js && node --check src/calculations.js && node --check src/admissions.js && node --check src/admission-data.js",
-    "webhook:set": "node scripts/register-webhook.mjs"
+    "webhook:set": "node scripts/register-webhook.mjs",
+    "report:referrals": "node scripts/export-referral-report.mjs"
   },
   "engines": {
     "node": ">=20"
