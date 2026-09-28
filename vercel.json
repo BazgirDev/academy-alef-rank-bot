@@ -6,6 +6,9 @@
       "includeFiles": "assets/**"
     }
   },
+  "crons": [
+    { "path": "/api/daily-stats", "schedule": "30 8 * * *" }
+  ],
   "rewrites": [
     {
       "source": "/",

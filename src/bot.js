@@ -1,7 +1,8 @@
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { Input, Telegraf } from "telegraf"
-import { claimUpdate, createReferralCode, listConsultations, listContacts, listReferralCodes, loadUser, recordReferralStart, releaseUpdate, saveConsultation, saveContact, saveUser } from "./database.js"
+import { claimDailyAdminReport, claimUpdate, countRecentActivity, createReferralCode, listConsultations, listContacts, listReferralCodes, loadUser, recordReferralStart, releaseDailyAdminReport, releaseUpdate, saveConsultation, saveContact, saveUser } from "./database.js"
+import { formatDailyStats, reportDate } from "./daily-stats.js"
 import { admissionSuggestions } from "./admissions.js"
 import {
   GPA_COEF,
@@ -67,6 +68,27 @@ function telegram() {
 
 function adminIds() {
   return (process.env.CONTACT_ADMIN_CHAT_IDS || "2011517182,168675688").split(",").map(value => Number(value.trim())).filter(Number.isSafeInteger)
+}
+
+export async function sendDailyAdminStats(now = new Date()) {
+  const ids = adminIds()
+  if (ids.length === 0) throw new Error("CONTACT_ADMIN_CHAT_IDS is required")
+  const counts = await countRecentActivity()
+  const date = reportDate(now)
+  const message = formatDailyStats(counts)
+  const results = await Promise.allSettled(ids.map(async id => {
+    if (!await claimDailyAdminReport(date, id)) return false
+    try {
+      await telegram().sendMessage(id, message)
+      return true
+    } catch (error) {
+      await releaseDailyAdminReport(date, id)
+      throw error
+    }
+  }))
+  const failed = results.filter(result => result.status === "rejected")
+  if (failed.length) throw new AggregateError(failed.map(result => result.reason), "Daily admin statistics delivery failed")
+  return results.filter(result => result.value).length
 }
 
 function mainKeyboardFor(userId) {

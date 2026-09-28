@@ -50,6 +50,12 @@ async function initialize() {
   )`
   await sql`CREATE INDEX IF NOT EXISTS referral_starts_code_time_idx
     ON referral_starts (referral_code, first_started_at)`
+  await sql`CREATE TABLE IF NOT EXISTS daily_admin_reports (
+    report_date DATE NOT NULL,
+    admin_chat_id BIGINT NOT NULL,
+    claimed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (report_date, admin_chat_id)
+  )`
   await sql`INSERT INTO contacts (user_id, chat_id, full_name, username, phone_number, shared_at)
     SELECT user_id, user_id, COALESCE(NULLIF(data->>'contact_name', ''), '—'), NULL,
       data->>'phone_number', updated_at
@@ -133,6 +139,28 @@ export async function listContacts() {
   return sql`SELECT user_id, chat_id, full_name, username, phone_number, shared_at
     FROM contacts
     ORDER BY shared_at DESC`
+}
+
+export async function countRecentActivity() {
+  await initialize()
+  const sql = client()
+  const rows = await sql`SELECT
+    (SELECT COUNT(*)::int FROM contacts WHERE shared_at >= NOW() - INTERVAL '24 hours') AS contacts,
+    (SELECT COUNT(*)::int FROM consultation_requests WHERE requested_at >= NOW() - INTERVAL '24 hours') AS consultations`
+  return rows[0]
+}
+
+export async function claimDailyAdminReport(reportDate, adminChatId) {
+  await initialize()
+  const sql = client()
+  const rows = await sql`INSERT INTO daily_admin_reports (report_date, admin_chat_id)
+    VALUES (${reportDate}, ${adminChatId}) ON CONFLICT DO NOTHING RETURNING admin_chat_id`
+  return rows.length === 1
+}
+
+export async function releaseDailyAdminReport(reportDate, adminChatId) {
+  const sql = client()
+  await sql`DELETE FROM daily_admin_reports WHERE report_date = ${reportDate} AND admin_chat_id = ${adminChatId}`
 }
 
 export async function createReferralCode(code) {
