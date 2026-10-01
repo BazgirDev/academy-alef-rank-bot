@@ -27,6 +27,7 @@ const assets = {
   pansion: path.join(rootDirectory, "assets", "pansion.png"),
   rankEstimateFollowup: path.join(rootDirectory, "assets", "rank-estimate-followup.mp4"),
   puzzleAdmission: path.join(rootDirectory, "assets", "puzzle-admission-1405.png"),
+  specialistPoster: path.join(rootDirectory, "assets", "poster-specialist-major-estimation-v2.png"),
 }
 
 const consultationMenuText = "🧭 ارتباط با مشاور تخصصی"
@@ -205,7 +206,9 @@ async function welcome(message, session, showIntro = false) {
   const user = message.from
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ")
   if (!showIntro) await notifyAdmins(`🚀 کاربر ربات را شروع کرد\n\nنام: ${fullName || "—"}\nنام کاربری: ${user.username ? `@${user.username}` : "—"}\nشناسه تلگرام: ${user.id}`)
-  await markdown(message.chat.id, "🎓 به آکادمی الف خوش اومدی🌱\n\nاینجا رتبه و کارنامه‌ات را کنار علاقه‌ها و توانایی‌هایت بررسی می‌کنیم\n\n🧭 با همراهی مشاوران تخصصی هر گروه، رشته‌محل‌ها و مسیرهای پیش‌رو را آگاهانه‌تر می‌شناسی\n\n👨‍🏫 آکادمی الف با مدیریت مهندس ارسلان فیروزنیا و پشتوانهٔ ۱۴ سال تجربهٔ مشاوره و تدریس همراه توست\n\n✨ هدفمان کمک به انتخابی واقع‌بینانه و متناسب با آینده‌ای است که می‌خواهی", showIntro ? introKeyboard : mainKeyboardFor(user.id))
+  const welcomeText = "🎓 به آکادمی الف خوش اومدی🌱\n\nاینجا رتبه و کارنامه‌ات را کنار علاقه‌ها و توانایی‌هایت بررسی می‌کنیم\n\n🧭 با همراهی مشاوران تخصصی هر گروه، رشته‌محل‌ها و مسیرهای پیش‌رو را آگاهانه‌تر می‌شناسی\n\n👨‍🏫 آکادمی الف با مدیریت مهندس ارسلان فیروزنیا و پشتوانهٔ ۱۴ سال تجربهٔ مشاوره و تدریس همراه توست\n\n✨ هدفمان کمک به انتخابی واقع‌بینانه و متناسب با آینده‌ای است که می‌خواهی"
+  if (showIntro) await markdown(message.chat.id, welcomeText, introKeyboard)
+  else await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.specialistPoster), { caption: welcomeText, parse_mode: "Markdown", ...mainKeyboardFor(user.id) })
   if (adminIds().includes(user.id)) await reply(message.chat.id, "✅ دسترسی دریافت مخاطبان برای این حساب مدیر فعال است.")
   session.state = showIntro ? "INTRO_READY" : "MAIN_MENU"
 }
@@ -232,7 +235,11 @@ async function start(message, session, referralCode) {
   if (referralCode) await recordReferralStart(message.from.id, referralCode)
   session.data = clearCalculation(session.data)
   if (session.data.contact_verified && session.data.phone_number) return welcome(message, session)
-  await markdown(message.chat.id, "👋 *خوش آمدید به آکادمی الف*\n\nبرای استفاده از تخمین رتبه، بررسی شانس قبولی و خدمات ربات، ابتدا باید شمارهٔ متعلق به خودت را با دکمهٔ زیر Share کنی.\n\n🔒 شماره فقط برای ثبت درخواست و تماس مشاوره آکادمی استفاده می‌شود.", contactKeyboard)
+  await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.specialistPoster), {
+    caption: "👋 *خوش آمدید به آکادمی الف*\n\nبرای استفاده از تخمین رتبه، بررسی شانس قبولی و خدمات ربات، ابتدا باید شمارهٔ متعلق به خودت را با دکمهٔ زیر Share کنی.\n\n🔒 شماره فقط برای ثبت درخواست و تماس مشاوره آکادمی استفاده می‌شود.",
+    parse_mode: "Markdown",
+    ...contactKeyboard
+  })
   session.state = "START_CONTACT"
 }
 
