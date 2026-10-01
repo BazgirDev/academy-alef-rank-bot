@@ -573,7 +573,7 @@ export function normalizeConsultationPhone(value) {
 
 async function consultationPhone(message, session, text) {
   const phone = normalizeConsultationPhone(text)
-  if (!phone) return reply(message.chat.id, "⚠️ شماره باید ۱۱ رقم باشد، با 09 شروع شود و هیچ سه رقم پشت سر هم آن یکسان نباشند. لطفاً دوباره وارد کن؛ نمونه: 09123456789")
+  if (!phone) return reply(message.chat.id, "⚠️ شماره نامعتبر است. لطفاً شماره درست وارد کن 📱")
   session.data.consultation_phone = phone
   await registerConsultation(message, session)
 }

@@ -164,7 +164,8 @@ export async function countRecentActivity() {
   const sql = client()
   const rows = await sql`SELECT
     (SELECT COUNT(*)::int FROM contacts WHERE shared_at >= NOW() - INTERVAL '24 hours') AS contacts,
-    (SELECT COUNT(*)::int FROM consultation_requests WHERE requested_at >= NOW() - INTERVAL '24 hours') AS consultations`
+    (SELECT COUNT(*)::int FROM consultation_requests
+      WHERE request_type = 'specialist' AND requested_at >= NOW() - INTERVAL '24 hours') AS consultations`
   return rows[0]
 }
 

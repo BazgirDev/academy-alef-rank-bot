@@ -7,5 +7,5 @@ export function reportDate(now = new Date()) {
 }
 
 export function formatDailyStats({ contacts, consultations }) {
-  return `📊 آمار ۲۴ ساعت گذشته\n\n📱 اشتراک شماره تماس: ${contacts} نفر\n📞 درخواست مشاوره: ${consultations} نفر`
+  return `📊 آمار ۲۴ ساعت گذشته\n\n📱 اشتراک شماره تماس: ${contacts} نفر\n🧭 درخواست مشاوره تخصصی: ${consultations} نفر`
 }

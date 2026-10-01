@@ -5,7 +5,7 @@ import { formatDailyStats, reportDate } from "../src/daily-stats.js"
 
 test("daily statistics message contains both counts", () => {
   assert.equal(formatDailyStats({ contacts: 12, consultations: 4 }),
-    "📊 آمار ۲۴ ساعت گذشته\n\n📱 اشتراک شماره تماس: 12 نفر\n📞 درخواست مشاوره: 4 نفر")
+    "📊 آمار ۲۴ ساعت گذشته\n\n📱 اشتراک شماره تماس: 12 نفر\n🧭 درخواست مشاوره تخصصی: 4 نفر")
 })
 
 test("report date follows Tehran calendar day", () => {
