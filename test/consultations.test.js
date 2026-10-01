@@ -6,7 +6,7 @@ test("consultation phone accepts only 11-digit Iranian mobile numbers", () => {
   assert.equal(normalizeConsultationPhone("09123456789"), "09123456789")
   assert.equal(normalizeConsultationPhone("۰۹۱۲۳۴۵۶۷۸۹"), "09123456789")
   assert.equal(normalizeConsultationPhone("٠٩١٢٣٤٥٦٧٨٩"), "09123456789")
-  for (const invalid of ["9123456789", "0912345678", "091234567890", "02112345678", "0912 345 6789"]) {
+  for (const invalid of ["9123456789", "0912345678", "091234567890", "02112345678", "0912 345 6789", "09111123456", "۰۹۹۹۲۳۴۵۶۷۸"]) {
     assert.equal(normalizeConsultationPhone(invalid), null)
   }
 })

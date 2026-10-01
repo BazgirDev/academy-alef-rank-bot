@@ -31,7 +31,8 @@ const assets = {
 
 const consultationMenuText = "🧭 ارتباط با مشاور تخصصی"
 const academyIntroText = "🎬 آشنایی با آکادمی الف"
-const mainKeyboard = keyboard([[consultationMenuText], [academyIntroText], ["🎯 تخمین رتبه کنکور سراسری"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
+const introKeyboard = { reply_markup: { inline_keyboard: [[{ text: academyIntroText, callback_data: "academy_intro" }]] } }
+const mainKeyboard = keyboard([[consultationMenuText], ["🎯 تخمین رتبه کنکور سراسری"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
 const consultationButtonText = "🧭 درخواست مشاوره تخصصی انتخاب رشته"
 const resultKeyboard = { reply_markup: { inline_keyboard: [[{ text: consultationButtonText, callback_data: "consultation_data" }]] } }
 const rankToolsKeyboard = keyboard([["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🔙 بازگشت به منوی اصلی"]])
@@ -58,9 +59,16 @@ const puzzleCaption = `🧩 *انتخاب رشته پازلی آکادمی ال�
 با کدرشته‌های طلایی، فهرستی متناسب با اولویت‌های خودت می‌چینیم تا برای انتخاب دانشگاه و رشته دید روشن‌تری داشته باشی.`
 const consultationPitch = `🎓 *پیش‌ثبت‌نام رایگان مشاوره تخصصی انتخاب رشته*
 
-انتخاب رشته در آکادمی الف با بررسی علاقه‌ها، رتبه و کارنامه، اطلاعات رسمی سازمان سنجش و داده‌های آخرین قبولی‌های در دسترس انجام می‌شود. مشاوران هر گروه آزمایشی، گزینه‌ها را در بازه‌های مختلف شانس قبولی بررسی می‌کنند.
+در آکادمی الف، برای هر دانش‌آموز یک مسیر اختصاصی می‌چینیم:
 
-ظرفیت بررسی فردی محدود است تا هر پرونده با دقت پیگیری شود. اکنون می‌توانی درخواستت را رایگان پیش‌ثبت‌نام کنی؛ تیم ما برای هماهنگی با تو تماس می‌گیرد. ثبت درخواست به معنی رزرو قطعی زمان یا تضمین قبولی نیست.`
+• 🧭 بررسی علاقه‌ها، کارنامه و رتبه
+• 📊 استفاده از اطلاعات رسمی سازمان سنجش و داده‌های آخرین قبولی‌های در دسترس
+• 🧩 چیدن کدرشته‌ها در بازه‌های مختلف شانس قبولی
+• 👨‍🏫 بررسی پرونده توسط مشاور متخصص گروه آزمایشی تو
+
+⏳ *ظرفیت بررسی فردی محدود است* تا هر پرونده با دقت پیگیری شود. همین حالا می‌توانی رایگان پیش‌ثبت‌نام کنی؛ تیم ما برای هماهنگی تماس می‌گیرد.
+
+ℹ️ پیش‌ثبت‌نام به معنی رزرو قطعی زمان یا تضمین قبولی نیست.`
 const rankFromTarazText = `🎯 *حالا برو ببین با این تراز، رتبه‌ات چند می‌شود.*
 
 تخمین رتبه بر اساس داده‌های ربات با دقت بیش از ۹۰٪ انجام می‌شود.
@@ -106,7 +114,7 @@ export async function sendDailyAdminStats(now = new Date()) {
 
 function mainKeyboardFor(userId) {
   if (!adminIds().includes(Number(userId))) return mainKeyboard
-  return keyboard([[consultationMenuText], [academyIntroText], ["🎯 تخمین رتبه کنکور سراسری"], ["📋 فرم‌های مشاوره", "👥 مخاطبین"], ["📊 آمار لینک‌های ارجاع"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
+  return keyboard([[consultationMenuText], ["🎯 تخمین رتبه کنکور سراسری"], ["📋 فرم‌های مشاوره", "👥 مخاطبین"], ["📊 آمار لینک‌های ارجاع"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
 }
 
 function numberFrom(text) {
@@ -186,22 +194,20 @@ async function sendRankEstimateFollowup(chatId) {
 const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
 
 async function showAcademyIntro(message, session) {
-  await reply(message.chat.id, "🎬 با آکادمی الف و مسیر انتخاب رشته پازلی آشنا شو:")
   await telegram().sendVideo(message.chat.id, Input.fromLocalFile(assets.rankEstimateFollowup))
-  await delay(5000)
   await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.puzzleAdmission), { caption: puzzleCaption, parse_mode: "Markdown" })
   await reply(message.chat.id, "از منوی زیر مسیر بعدی‌ات را انتخاب کن 👇", mainKeyboardFor(message.from.id))
   session.state = "MAIN_MENU"
 }
 
-async function welcome(message, session) {
+async function welcome(message, session, showIntro = false) {
   await typing(message.chat.id)
   const user = message.from
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ")
-  await notifyAdmins(`🚀 کاربر ربات را شروع کرد\n\nنام: ${fullName || "—"}\nنام کاربری: ${user.username ? `@${user.username}` : "—"}\nشناسه تلگرام: ${user.id}`)
-  await markdown(message.chat.id, "🎓 به آکادمی الف خوش اومدی🌱\n\nاینجا رتبه و کارنامه‌ات را کنار علاقه‌ها و توانایی‌هایت بررسی می‌کنیم\n\n🧭 با همراهی مشاوران تخصصی هر گروه، رشته‌محل‌ها و مسیرهای پیش‌رو را آگاهانه‌تر می‌شناسی\n\n👨‍🏫 آکادمی الف با مدیریت مهندس ارسلان فیروزنیا و پشتوانهٔ ۱۴ سال تجربهٔ مشاوره و تدریس همراه توست\n\n✨ هدفمان کمک به انتخابی واقع‌بینانه و متناسب با آینده‌ای است که می‌خواهی", mainKeyboardFor(user.id))
+  if (!showIntro) await notifyAdmins(`🚀 کاربر ربات را شروع کرد\n\nنام: ${fullName || "—"}\nنام کاربری: ${user.username ? `@${user.username}` : "—"}\nشناسه تلگرام: ${user.id}`)
+  await markdown(message.chat.id, "🎓 به آکادمی الف خوش اومدی🌱\n\nاینجا رتبه و کارنامه‌ات را کنار علاقه‌ها و توانایی‌هایت بررسی می‌کنیم\n\n🧭 با همراهی مشاوران تخصصی هر گروه، رشته‌محل‌ها و مسیرهای پیش‌رو را آگاهانه‌تر می‌شناسی\n\n👨‍🏫 آکادمی الف با مدیریت مهندس ارسلان فیروزنیا و پشتوانهٔ ۱۴ سال تجربهٔ مشاوره و تدریس همراه توست\n\n✨ هدفمان کمک به انتخابی واقع‌بینانه و متناسب با آینده‌ای است که می‌خواهی", showIntro ? introKeyboard : mainKeyboardFor(user.id))
   if (adminIds().includes(user.id)) await reply(message.chat.id, "✅ دسترسی دریافت مخاطبان برای این حساب مدیر فعال است.")
-  session.state = "MAIN_MENU"
+  session.state = showIntro ? "INTRO_READY" : "MAIN_MENU"
 }
 
 async function showResult(chatId, userId, session, result, suggestRank = false, sendFollowupVideo = false) {
@@ -237,13 +243,12 @@ async function startContact(message, session, text) {
   if (value.user_id !== message.from.id) return reply(message.chat.id, "⚠️ این شماره متعلق به حساب تلگرام شما نیست. لطفاً شمارهٔ خودت را ارسال کن.", contactKeyboard)
   const fullName = await persistSharedContact(message, value, session)
   await notifyAdmins(`📥 مخاطب جدید ربات\n\nنام: ${fullName}\nشماره: ${value.phone_number}\nنام کاربری: ${message.from.username ? `@${message.from.username}` : "—"}\nشناسه تلگرام: ${message.from.id}`, value)
-  await reply(message.chat.id, "✅ شماره‌ات ثبت شد. برای دیدن معرفی آکادمی الف، دکمه زیر را بزن.", keyboard([[academyIntroText]]))
-  session.state = "INTRO_READY"
+  await welcome(message, session, true)
 }
 
 async function introReady(message, session, text) {
-  if (text === academyIntroText) return showAcademyIntro(message, session)
-  await reply(message.chat.id, "برای ادامه، دکمه آشنایی با آکادمی الف را بزن.", keyboard([[academyIntroText]]))
+  if (text === "academy_intro") return showAcademyIntro(message, session)
+  await reply(message.chat.id, "برای ادامه، دکمه آشنایی با آکادمی الف را زیر پیام خوش‌آمد بزن.", introKeyboard)
 }
 
 async function adminCheck(message) {
@@ -263,8 +268,6 @@ async function mainMenu(message, session, text) {
     await typing(message.chat.id)
     await markdown(message.chat.id, "🎯 *تخمین رتبه کنکور سراسری*\n\nروش موردنظر را انتخاب کن:", rankToolsKeyboard)
     session.state = "RANK_MENU"
-  } else if (text === academyIntroText) {
-    await showAcademyIntro(message, session)
   } else if (text === "🏛 درباره آکادمی الف") {
     await typing(message.chat.id)
     await markdown(message.chat.id, "🏛 *درباره آکادمی الف*\n\nآکادمی الف مجموعه‌ای آموزشی با تمرکز بر آموزش هدفمند، مشاوره، پانسیون مطالعاتی و همراهی مستمر دانش‌آموزان است.\n\nموضوع موردنظر را انتخاب کنید:", academyKeyboard)
@@ -565,12 +568,12 @@ async function consultationGrade(message, session, text) {
 
 export function normalizeConsultationPhone(value) {
   const number = String(value || "").trim().replace(/[۰-۹]/g, digit => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, digit => "٠١٢٣٤٥٦٧٨٩".indexOf(digit))
-  return /^09\d{9}$/.test(number) ? number : null
+  return /^09\d{9}$/.test(number) && !/(\d)\1\1/.test(number) ? number : null
 }
 
 async function consultationPhone(message, session, text) {
   const phone = normalizeConsultationPhone(text)
-  if (!phone) return reply(message.chat.id, "⚠️ شماره باید ۱۱ رقم باشد و با 09 شروع شود. لطفاً دوباره وارد کن؛ نمونه: 09123456789")
+  if (!phone) return reply(message.chat.id, "⚠️ شماره باید ۱۱ رقم باشد، با 09 شروع شود و هیچ سه رقم پشت سر هم آن یکسان نباشند. لطفاً دوباره وارد کن؛ نمونه: 09123456789")
   session.data.consultation_phone = phone
   await registerConsultation(message, session)
 }
@@ -732,6 +735,7 @@ export async function processUpdate(update) {
     else if (text === "/referrals" || text.startsWith("/referrals@")) await showReferralCounts(message)
     else if (text === "/moshavereha" || text.startsWith("/moshavereha@") || text === "📋 فرم‌های مشاوره") await listConsultationRequests(message)
     else if (text === "/contact" || text.startsWith("/contact@") || text === "👥 مخاطبین") await listSavedContacts(message)
+    else if (text === "academy_intro") await showAcademyIntro(message, session)
     else if (text === "consultation_data" || text === "/data" || text.startsWith("/data@") || text === "/moshavere" || text.startsWith("/moshavere@")) await startConsultation(message, session)
     else if (text === "/cancel" || text.startsWith("/cancel@")) {
       session.data = clearCalculation(session.data)

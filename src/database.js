@@ -26,12 +26,18 @@ async function initialize() {
     full_name TEXT NOT NULL,
     username TEXT,
     phone_number TEXT NOT NULL,
+    request_type TEXT NOT NULL DEFAULT 'general',
     interests TEXT NOT NULL,
     estimate JSONB,
     requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`
   await sql`ALTER TABLE consultation_requests ADD COLUMN IF NOT EXISTS field TEXT`
   await sql`ALTER TABLE consultation_requests ADD COLUMN IF NOT EXISTS grade TEXT`
+  await sql`ALTER TABLE consultation_requests ADD COLUMN IF NOT EXISTS request_type TEXT NOT NULL DEFAULT 'general'`
+  await sql`UPDATE consultation_requests SET request_type = 'specialist'
+    WHERE request_type = 'general' AND field IS NOT NULL AND grade IS NOT NULL`
+  await sql`CREATE INDEX IF NOT EXISTS consultation_requests_specialist_time_idx
+    ON consultation_requests (requested_at DESC) WHERE request_type = 'specialist'`
   await sql`CREATE TABLE IF NOT EXISTS contacts (
     user_id BIGINT PRIMARY KEY,
     chat_id BIGINT NOT NULL,
@@ -104,15 +110,16 @@ export async function saveConsultation(request) {
   await initialize()
   const sql = client()
   const rows = await sql`INSERT INTO consultation_requests (
-      user_id, full_name, username, phone_number, field, grade, interests, estimate, requested_at
+      user_id, full_name, username, phone_number, request_type, field, grade, interests, estimate, requested_at
     ) VALUES (
       ${request.userId}, ${request.fullName}, ${request.username || null},
-      ${request.phoneNumber}, ${request.field}, ${request.grade}, ${request.interests}, ${JSON.stringify(request.estimate || null)}, NOW()
+      ${request.phoneNumber}, 'specialist', ${request.field}, ${request.grade}, ${request.interests}, ${JSON.stringify(request.estimate || null)}, NOW()
     )
     ON CONFLICT (user_id) DO UPDATE SET
       full_name = EXCLUDED.full_name,
       username = EXCLUDED.username,
       phone_number = EXCLUDED.phone_number,
+      request_type = EXCLUDED.request_type,
       field = EXCLUDED.field,
       grade = EXCLUDED.grade,
       interests = EXCLUDED.interests,
@@ -127,6 +134,7 @@ export async function listConsultations() {
   const sql = client()
   return sql`SELECT user_id, full_name, username, phone_number, field, grade, interests, estimate, requested_at
     FROM consultation_requests
+    WHERE request_type = 'specialist'
     ORDER BY requested_at DESC`
 }
 
