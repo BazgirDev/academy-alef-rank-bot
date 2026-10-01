@@ -26,13 +26,17 @@ const assets = {
   ranks: path.join(rootDirectory, "assets", "ranks.jpg"),
   pansion: path.join(rootDirectory, "assets", "pansion.png"),
   rankEstimateFollowup: path.join(rootDirectory, "assets", "rank-estimate-followup.mp4"),
+  puzzleAdmission: path.join(rootDirectory, "assets", "puzzle-admission-1405.png"),
 }
 
-const mainKeyboard = keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
-const consultationButtonText = "مشاوره و بررسی تخصصی شانس قبولی"
+const consultationMenuText = "🧭 ارتباط با مشاور تخصصی"
+const academyIntroText = "🎬 آشنایی با آکادمی الف"
+const mainKeyboard = keyboard([[consultationMenuText], [academyIntroText], ["🎯 تخمین رتبه کنکور سراسری"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
+const consultationButtonText = "🧭 درخواست مشاوره تخصصی انتخاب رشته"
 const resultKeyboard = { reply_markup: { inline_keyboard: [[{ text: consultationButtonText, callback_data: "consultation_data" }]] } }
 const rankToolsKeyboard = keyboard([["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🔙 بازگشت به منوی اصلی"]])
 const rankFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
+const gradeKeyboard = keyboard([["پایه دهم", "پایه یازدهم"], ["پایه دوازدهم", "فارغ‌التحصیل"]], true)
 const gpaFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
 const regionKeyboard = keyboard([["🥇 منطقه ۱", "🥈 منطقه ۲", "🥉 منطقه ۳"]], true)
 const gpaModeKeyboard = keyboard([["📘 معدل کل"], ["📚 نمرات تک‌درس"], ["🔙 بازگشت"]])
@@ -47,7 +51,16 @@ const contactKeyboard = {
 const removeKeyboard = { reply_markup: { remove_keyboard: true } }
 const consultationValueText = `✅🎉 *نتیجه تخمینی شما آماده است!*
 
-🎯 برای بررسی دقیق‌تر نتیجه و دریافت مشاوره تلفنی و بررسی نتیجه به صورت تخصصی‌تر، دکمه زیر را فشار دهید 👇🏻`
+🎯 برای پیش‌ثبت‌نام رایگان بررسی تخصصی انتخاب رشته بر اساس رتبه و علاقه‌هایت، دکمه زیر را بزن 👇🏻`
+const puzzleCaption = `🧩 *انتخاب رشته پازلی آکادمی الف*
+
+ما علاقه‌ها، توانایی‌ها و رتبه‌ات را کنار هم می‌گذاریم و رشته‌محل‌ها را در بازه‌های مختلف شانس قبولی بررسی می‌کنیم.
+با کدرشته‌های طلایی، فهرستی متناسب با اولویت‌های خودت می‌چینیم تا برای انتخاب دانشگاه و رشته دید روشن‌تری داشته باشی.`
+const consultationPitch = `🎓 *پیش‌ثبت‌نام رایگان مشاوره تخصصی انتخاب رشته*
+
+انتخاب رشته در آکادمی الف با بررسی علاقه‌ها، رتبه و کارنامه، اطلاعات رسمی سازمان سنجش و داده‌های آخرین قبولی‌های در دسترس انجام می‌شود. مشاوران هر گروه آزمایشی، گزینه‌ها را در بازه‌های مختلف شانس قبولی بررسی می‌کنند.
+
+ظرفیت بررسی فردی محدود است تا هر پرونده با دقت پیگیری شود. اکنون می‌توانی درخواستت را رایگان پیش‌ثبت‌نام کنی؛ تیم ما برای هماهنگی با تو تماس می‌گیرد. ثبت درخواست به معنی رزرو قطعی زمان یا تضمین قبولی نیست.`
 const rankFromTarazText = `🎯 *حالا برو ببین با این تراز، رتبه‌ات چند می‌شود.*
 
 تخمین رتبه بر اساس داده‌های ربات با دقت بیش از ۹۰٪ انجام می‌شود.
@@ -93,7 +106,7 @@ export async function sendDailyAdminStats(now = new Date()) {
 
 function mainKeyboardFor(userId) {
   if (!adminIds().includes(Number(userId))) return mainKeyboard
-  return keyboard([["🎯 تخمین رتبه کنکور سراسری"], ["📞 درخواست مشاوره رایگان"], ["📋 فرم‌های مشاوره", "👥 مخاطبین"], ["📊 آمار لینک‌های ارجاع"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
+  return keyboard([[consultationMenuText], [academyIntroText], ["🎯 تخمین رتبه کنکور سراسری"], ["📋 فرم‌های مشاوره", "👥 مخاطبین"], ["📊 آمار لینک‌های ارجاع"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
 }
 
 function numberFrom(text) {
@@ -170,6 +183,17 @@ async function sendRankEstimateFollowup(chatId) {
   }
 }
 
+const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
+
+async function showAcademyIntro(message, session) {
+  await reply(message.chat.id, "🎬 با آکادمی الف و مسیر انتخاب رشته پازلی آشنا شو:")
+  await telegram().sendVideo(message.chat.id, Input.fromLocalFile(assets.rankEstimateFollowup))
+  await delay(5000)
+  await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.puzzleAdmission), { caption: puzzleCaption, parse_mode: "Markdown" })
+  await reply(message.chat.id, "از منوی زیر مسیر بعدی‌ات را انتخاب کن 👇", mainKeyboardFor(message.from.id))
+  session.state = "MAIN_MENU"
+}
+
 async function welcome(message, session) {
   await typing(message.chat.id)
   const user = message.from
@@ -213,7 +237,13 @@ async function startContact(message, session, text) {
   if (value.user_id !== message.from.id) return reply(message.chat.id, "⚠️ این شماره متعلق به حساب تلگرام شما نیست. لطفاً شمارهٔ خودت را ارسال کن.", contactKeyboard)
   const fullName = await persistSharedContact(message, value, session)
   await notifyAdmins(`📥 مخاطب جدید ربات\n\nنام: ${fullName}\nشماره: ${value.phone_number}\nنام کاربری: ${message.from.username ? `@${message.from.username}` : "—"}\nشناسه تلگرام: ${message.from.id}`, value)
-  await welcome(message, session)
+  await reply(message.chat.id, "✅ شماره‌ات ثبت شد. برای دیدن معرفی آکادمی الف، دکمه زیر را بزن.", keyboard([[academyIntroText]]))
+  session.state = "INTRO_READY"
+}
+
+async function introReady(message, session, text) {
+  if (text === academyIntroText) return showAcademyIntro(message, session)
+  await reply(message.chat.id, "برای ادامه، دکمه آشنایی با آکادمی الف را بزن.", keyboard([[academyIntroText]]))
 }
 
 async function adminCheck(message) {
@@ -233,6 +263,8 @@ async function mainMenu(message, session, text) {
     await typing(message.chat.id)
     await markdown(message.chat.id, "🎯 *تخمین رتبه کنکور سراسری*\n\nروش موردنظر را انتخاب کن:", rankToolsKeyboard)
     session.state = "RANK_MENU"
+  } else if (text === academyIntroText) {
+    await showAcademyIntro(message, session)
   } else if (text === "🏛 درباره آکادمی الف") {
     await typing(message.chat.id)
     await markdown(message.chat.id, "🏛 *درباره آکادمی الف*\n\nآکادمی الف مجموعه‌ای آموزشی با تمرکز بر آموزش هدفمند، مشاوره، پانسیون مطالعاتی و همراهی مستمر دانش‌آموزان است.\n\nموضوع موردنظر را انتخاب کنید:", academyKeyboard)
@@ -240,7 +272,7 @@ async function mainMenu(message, session, text) {
   } else if (text === "📞 ارتباط با ما") {
     await typing(message.chat.id)
     await markdown(message.chat.id, CONTACT_TEXT, mainKeyboardFor(message.from.id))
-  } else if (text === "📞 درخواست مشاوره رایگان") {
+  } else if (text === consultationMenuText || text === "📞 درخواست مشاوره رایگان") {
     await startConsultation(message, session)
   } else {
     await reply(message.chat.id, "لطفاً یکی از گزینه‌های منو را انتخاب کن.", mainKeyboard)
@@ -487,11 +519,11 @@ async function contact(message, session, text) {
 async function startConsultation(message, session) {
   session.data = clearCalculation(session.data)
   if (!session.data.contact_verified || !session.data.phone_number) {
-    await reply(message.chat.id, "برای ثبت درخواست مشاوره رایگان، ابتدا شماره خودت را با دکمه «📱 ارسال شماره من» تأیید کن.", contactKeyboard)
+    await reply(message.chat.id, "برای شروع پیش‌ثبت‌نام مشاوره تخصصی، ابتدا شماره تلگرام خودت را با دکمه زیر Share کن.", contactKeyboard)
     session.state = "CONSULT_CONTACT"
     return
   }
-  await registerConsultation(message, session)
+  await showConsultationPitch(message, session)
 }
 
 async function consultationContact(message, session, text) {
@@ -504,7 +536,43 @@ async function consultationContact(message, session, text) {
   if (!value) return reply(message.chat.id, "لطفاً شماره خودت را فقط با دکمه «📱 ارسال شماره من» تأیید کن.", contactKeyboard)
   if (value.user_id !== message.from.id) return reply(message.chat.id, "⚠️ این شماره متعلق به حساب تلگرام شما نیست. لطفاً شماره خودت را ارسال کن.", contactKeyboard)
   await persistSharedContact(message, value, session)
-  await registerConsultation(message, session, value)
+  await showConsultationPitch(message, session)
+}
+
+async function showConsultationPitch(message, session) {
+  await markdown(message.chat.id, consultationPitch, removeKeyboard)
+  await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.puzzleAdmission))
+  await delay(3000)
+  await reply(message.chat.id, "🎓 گروه آزمایشی‌ات را انتخاب کن:", rankFieldKeyboard)
+  session.state = "CONSULT_FIELD"
+}
+
+async function consultationField(message, session, text) {
+  const field = selectedField(text, true)
+  if (!field) return reply(message.chat.id, "لطفاً گروه آزمایشی‌ات را با یکی از دکمه‌ها انتخاب کن.", rankFieldKeyboard)
+  session.data.consultation_field = field
+  await reply(message.chat.id, "📚 در کدام پایه هستی؟", gradeKeyboard)
+  session.state = "CONSULT_GRADE"
+}
+
+async function consultationGrade(message, session, text) {
+  const grades = ["پایه دهم", "پایه یازدهم", "پایه دوازدهم", "فارغ‌التحصیل"]
+  if (!grades.includes(text)) return reply(message.chat.id, "لطفاً پایه‌ات را با یکی از دکمه‌ها انتخاب کن.", gradeKeyboard)
+  session.data.consultation_grade = text
+  await reply(message.chat.id, "📱 شماره تلفنی را که می‌خواهی مشاور با آن تماس بگیرد وارد کن:", removeKeyboard)
+  session.state = "CONSULT_PHONE"
+}
+
+export function normalizeConsultationPhone(value) {
+  const number = String(value || "").trim().replace(/[۰-۹]/g, digit => "۰۱۲۳۴۵۶۷۸۹".indexOf(digit)).replace(/[٠-٩]/g, digit => "٠١٢٣٤٥٦٧٨٩".indexOf(digit))
+  return /^09\d{9}$/.test(number) ? number : null
+}
+
+async function consultationPhone(message, session, text) {
+  const phone = normalizeConsultationPhone(text)
+  if (!phone) return reply(message.chat.id, "⚠️ شماره باید ۱۱ رقم باشد و با 09 شروع شود. لطفاً دوباره وارد کن؛ نمونه: 09123456789")
+  session.data.consultation_phone = phone
+  await registerConsultation(message, session)
 }
 
 export function estimateAdminText(estimate) {
@@ -513,26 +581,23 @@ export function estimateAdminText(estimate) {
   return `🎓 ${field}\n📍 منطقه ${estimate.region || "—"}\n📊 تراز: ${estimate.taraz ?? "—"}\n🏆 رتبه: ${estimate.rank || "—"}`
 }
 
-async function registerConsultation(message, session, contactValue) {
+async function registerConsultation(message, session) {
   const fullName = session.data.contact_name || [message.from.first_name, message.from.last_name].filter(Boolean).join(" ") || "—"
+  const fieldName = { tajrobi: "تجربی", riazi: "ریاضی", ensani: "انسانی" }[session.data.consultation_field]
   const request = {
     userId: message.from.id,
     fullName,
     username: message.from.username || null,
-    phoneNumber: session.data.phone_number,
-    interests: "ثبت مستقیم بدون فرم",
+    phoneNumber: session.data.consultation_phone,
+    field: fieldName,
+    grade: session.data.consultation_grade,
+    interests: `رشته: ${fieldName} | پایه: ${session.data.consultation_grade}`,
     estimate: session.data.last_estimate || null
   }
-  const created = await saveConsultation(request)
-  if (!created) {
-    await reply(message.chat.id, "✅ درخواست مشاوره شما قبلاً ثبت شده است. با شما تماس می‌گیریم 📞", mainKeyboardFor(message.from.id))
-    session.data = clearCalculation(session.data)
-    session.state = "MAIN_MENU"
-    return
-  }
-  const adminText = `📞 درخواست مشاوره\n👤 ${fullName}\n\n${estimateAdminText(request.estimate)}`
-  await notifyAdmins(adminText, contactValue || { phone_number: request.phoneNumber, first_name: fullName })
-  await reply(message.chat.id, "✅📞 درخواست مشاوره رایگان شما ثبت شد.\n\nکارشناسان آکادمی الف برای هماهنگی با شما تماس می‌گیرند.", mainKeyboardFor(message.from.id))
+  await saveConsultation(request)
+  const adminText = `🧭 پیش‌ثبت‌نام مشاوره تخصصی\n👤 ${fullName}\n🎓 رشته: ${fieldName}\n📚 پایه: ${request.grade}\n📱 شماره واردشده توسط کاربر: ${request.phoneNumber}\nنام کاربری: ${request.username ? `@${request.username}` : "—"}\nشناسه تلگرام: ${request.userId}\n\n${estimateAdminText(request.estimate)}`
+  await notifyAdmins(adminText, { phone_number: request.phoneNumber, first_name: fullName })
+  await reply(message.chat.id, "✅ درخواست پیش‌ثبت‌نام رایگان مشاوره تخصصی ثبت شد. تیم آکادمی الف برای هماهنگی با شماره‌ای که وارد کردی تماس می‌گیرد.", mainKeyboardFor(message.from.id))
   session.data = clearCalculation(session.data)
   session.state = "MAIN_MENU"
 }
@@ -542,7 +607,7 @@ export function consultationListMessages(rows) {
   const entries = rows.map((row, index) => {
     const estimate = row.estimate || null
     const requestedAt = new Date(row.requested_at).toLocaleString("fa-IR", { timeZone: "Asia/Tehran" })
-    return `${index + 1}) ${row.full_name}\nشماره: ${row.phone_number}\nنام کاربری: ${row.username ? `@${row.username}` : "—"}\nشناسه: ${row.user_id}\nزمان درخواست: ${requestedAt}\n${estimateAdminText(estimate)}`
+    return `${index + 1}) ${row.full_name}\nرشته: ${row.field || "—"}\nپایه: ${row.grade || "—"}\nشماره واردشده: ${row.phone_number}\nنام کاربری: ${row.username ? `@${row.username}` : "—"}\nشناسه: ${row.user_id}\nزمان درخواست: ${requestedAt}\n${estimateAdminText(estimate)}`
   })
   const messages = []
   let current = `📋 درخواست‌های مشاوره\n\nتعداد کل: ${rows.length}`
@@ -641,8 +706,12 @@ const handlers = {
   PCT_SUBJECTS_INPUT: pctInput,
   RANK_CONTACT: contact,
   START_CONTACT: startContact,
+  INTRO_READY: introReady,
   ACADEMY_MENU: academyMenu,
   CONSULT_CONTACT: consultationContact,
+  CONSULT_FIELD: consultationField,
+  CONSULT_GRADE: consultationGrade,
+  CONSULT_PHONE: consultationPhone,
   CONSULT_INTERESTS: startConsultation
 }
 

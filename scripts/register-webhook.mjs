@@ -15,8 +15,7 @@ const webhook = await fetch(`${api}/setWebhook`, {
   body: JSON.stringify({
     url: `${baseUrl}/api/webhook`,
     secret_token: secretToken,
-    allowed_updates: ["message"],
-    drop_pending_updates: true
+    allowed_updates: ["message", "callback_query"]
   })
 })
 
@@ -31,7 +30,7 @@ const commands = await fetch(`${api}/setMyCommands`, {
   body: JSON.stringify({
     commands: [
       { command: "start", description: "شروع ربات و منوی اصلی" },
-      { command: "moshavere", description: "درخواست مشاوره رایگان" },
+      { command: "moshavere", description: "پیش‌ثبت‌نام مشاوره تخصصی انتخاب رشته" },
       { command: "cancel", description: "لغو عملیات" }
     ]
   })
@@ -51,7 +50,7 @@ for (const chatId of adminChatIds) {
       scope: { type: "chat", chat_id: chatId },
       commands: [
         { command: "start", description: "شروع ربات و منوی اصلی" },
-        { command: "moshavere", description: "درخواست مشاوره رایگان" },
+        { command: "moshavere", description: "پیش‌ثبت‌نام مشاوره تخصصی انتخاب رشته" },
         { command: "moshavereha", description: "فهرست فرم‌های مشاوره" },
         { command: "contact", description: "فهرست همه مخاطبین" },
         { command: "cancel", description: "لغو عملیات" }

@@ -30,6 +30,8 @@ async function initialize() {
     estimate JSONB,
     requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
   )`
+  await sql`ALTER TABLE consultation_requests ADD COLUMN IF NOT EXISTS field TEXT`
+  await sql`ALTER TABLE consultation_requests ADD COLUMN IF NOT EXISTS grade TEXT`
   await sql`CREATE TABLE IF NOT EXISTS contacts (
     user_id BIGINT PRIMARY KEY,
     chat_id BIGINT NOT NULL,
@@ -102,12 +104,20 @@ export async function saveConsultation(request) {
   await initialize()
   const sql = client()
   const rows = await sql`INSERT INTO consultation_requests (
-      user_id, full_name, username, phone_number, interests, estimate, requested_at
+      user_id, full_name, username, phone_number, field, grade, interests, estimate, requested_at
     ) VALUES (
       ${request.userId}, ${request.fullName}, ${request.username || null},
-      ${request.phoneNumber}, ${request.interests}, ${JSON.stringify(request.estimate || null)}, NOW()
+      ${request.phoneNumber}, ${request.field}, ${request.grade}, ${request.interests}, ${JSON.stringify(request.estimate || null)}, NOW()
     )
-    ON CONFLICT (user_id) DO NOTHING
+    ON CONFLICT (user_id) DO UPDATE SET
+      full_name = EXCLUDED.full_name,
+      username = EXCLUDED.username,
+      phone_number = EXCLUDED.phone_number,
+      field = EXCLUDED.field,
+      grade = EXCLUDED.grade,
+      interests = EXCLUDED.interests,
+      estimate = EXCLUDED.estimate,
+      requested_at = NOW()
     RETURNING user_id`
   return rows.length === 1
 }
@@ -115,7 +125,7 @@ export async function saveConsultation(request) {
 export async function listConsultations() {
   await initialize()
   const sql = client()
-  return sql`SELECT user_id, full_name, username, phone_number, interests, estimate, requested_at
+  return sql`SELECT user_id, full_name, username, phone_number, field, grade, interests, estimate, requested_at
     FROM consultation_requests
     ORDER BY requested_at DESC`
 }
