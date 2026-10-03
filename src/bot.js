@@ -210,8 +210,6 @@ async function sendRankEstimateFollowup(chatId) {
   }
 }
 
-const delay = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds))
-
 async function showAcademyIntro(message, session) {
   await telegram().sendVideo(message.chat.id, Input.fromLocalFile(assets.rankEstimateFollowup))
   await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.puzzleAdmission), { caption: puzzleCaption, parse_mode: "Markdown" })
@@ -569,7 +567,6 @@ async function consultationContact(message, session, text) {
 async function showConsultationPitch(message, session) {
   await markdown(message.chat.id, consultationPitch, removeKeyboard)
   await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.puzzleAdmission))
-  await delay(3000)
   await reply(message.chat.id, "🎓 گروه آزمایشی‌ات را انتخاب کن:", rankFieldKeyboard)
   session.state = "CONSULT_FIELD"
 }
