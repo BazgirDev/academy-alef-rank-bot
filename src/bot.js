@@ -36,7 +36,13 @@ const introKeyboard = { reply_markup: { inline_keyboard: [[{ text: academyIntroT
 const mainKeyboard = keyboard([[consultationMenuText], ["🎯 تخمین رتبه کنکور سراسری"], ["🏛 درباره آکادمی الف"], ["📞 ارتباط با ما"]])
 const consultationButtonText = "🧭 درخواست مشاوره تخصصی انتخاب رشته"
 const resultKeyboard = { reply_markup: { inline_keyboard: [[{ text: consultationButtonText, callback_data: "consultation_data" }]] } }
-const rankToolsKeyboard = keyboard([["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📊 تخمین رتبه کنکور با تراز کل"], ["🎓 تخمین قبولی با رتبه"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🔙 بازگشت به منوی اصلی"]])
+const rankToolsKeyboard = keyboard([["🎓 تخمین قبولی با رتبه"], ["🧪 تخمین رتبه با درصد + معدل نهایی"], ["📊 تخمین رتبه کنکور با تراز کل"], ["📈 تخمین تراز معدل امتحان نهایی"], ["🔙 بازگشت به منوی اصلی"]])
+const requiredChannel = "@academyfirooznia"
+const channelMembershipCallback = "check_channel_membership"
+const channelMembershipKeyboard = { reply_markup: { inline_keyboard: [
+  [{ text: "📢 عضویت در کانال مهندس ارسلان فیروزنیا", url: "https://t.me/academyfirooznia" }],
+  [{ text: "✅ عضو شدم؛ بررسی عضویت", callback_data: channelMembershipCallback }]
+] } }
 const rankFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
 const gradeKeyboard = keyboard([["پایه دهم", "پایه یازدهم"], ["پایه دوازدهم", "فارغ‌التحصیل"]], true)
 const gpaFieldKeyboard = keyboard([["🧬 تجربی", "📐 ریاضی", "📚 انسانی"]], true)
@@ -126,6 +132,18 @@ function numberFrom(text) {
 
 function clearCalculation(data) {
   return Object.fromEntries(["contact_verified", "phone_number", "contact_name", "last_estimate"].filter(key => key in data).map(key => [key, data[key]]))
+}
+
+export function isChannelMember(member) {
+  return ["creator", "administrator", "member"].includes(member?.status) ||
+    (member?.status === "restricted" && member.is_member === true)
+}
+
+async function requestChannelMembership(chatId, unavailable = false) {
+  const text = unavailable
+    ? "⚠️ فعلاً امکان بررسی عضویت در کانال وجود ندارد. کمی بعد دوباره دکمهٔ بررسی عضویت را بزنید."
+    : "برای استفاده از ربات، ابتدا در کانال مهندس ارسلان فیروزنیا عضو شوید؛ سپس دکمهٔ «عضو شدم؛ بررسی عضویت» را بزنید."
+  await reply(chatId, text, channelMembershipKeyboard)
 }
 
 function rememberEstimate(session, details, result) {
@@ -231,8 +249,7 @@ async function showResult(chatId, userId, session, result, suggestRank = false, 
   session.state = "RANK_CONTACT"
 }
 
-async function start(message, session, referralCode) {
-  if (referralCode) await recordReferralStart(message.from.id, referralCode)
+async function start(message, session) {
   session.data = clearCalculation(session.data)
   if (session.data.contact_verified && session.data.phone_number) return welcome(message, session)
   await telegram().sendPhoto(message.chat.id, Input.fromLocalFile(assets.specialistPoster), {
@@ -734,9 +751,28 @@ export async function processUpdate(update) {
   try {
     const session = await loadUser(message.from.id)
     const text = callback ? String(callback.data || "") : String(message.text || "").trim()
-    if (callback) await telegram().answerCbQuery(callback.id)
     const startMatch = text.match(/^\/start(?:@[A-Za-z0-9_]+)?(?:\s+([A-Za-z0-9_-]{1,64}))?$/)
-    if (startMatch) await start(message, session, startMatch[1])
+    if (startMatch?.[1]) await recordReferralStart(message.from.id, startMatch[1])
+    let joined = false
+    try {
+      joined = isChannelMember(await telegram().getChatMember(requiredChannel, message.from.id))
+    } catch (error) {
+      console.error("Could not check required channel membership", error.response?.error_code || error.code || "unknown")
+      if (callback) await telegram().answerCbQuery(callback.id, "بررسی عضویت فعلاً ممکن نیست")
+      await requestChannelMembership(message.chat.id, true)
+      session.state = "CHANNEL_JOIN"
+      await saveUser(message.from.id, session.state, session.data)
+      return
+    }
+    if (!joined) {
+      if (callback) await telegram().answerCbQuery(callback.id, "هنوز عضو کانال نیستید")
+      await requestChannelMembership(message.chat.id)
+      session.state = "CHANNEL_JOIN"
+      await saveUser(message.from.id, session.state, session.data)
+      return
+    }
+    if (callback) await telegram().answerCbQuery(callback.id, text === channelMembershipCallback ? "عضویت تأیید شد" : undefined)
+    if (text === channelMembershipCallback || session.state === "CHANNEL_JOIN" || startMatch) await start(message, session)
     else if (text === "/admincheck" || text.startsWith("/admincheck@")) await adminCheck(message)
     else if (text === "/referral" || text.startsWith("/referral ")) await createReferralLink(message, text)
     else if (text === "/referrals" || text.startsWith("/referrals@")) await showReferralCounts(message)
